@@ -113,8 +113,9 @@ installs the package on macOS 14, 15 and 26 (Apple Silicon and Intel) before pub
   green LEDs for eyes. Settings and installs from the builds named "Mbox 3 Control" carry over automatically;
   the Core Audio device keeps its identifier, so DAWs keep their settings.
 - The owner's first in-app driver update installed the new driver correctly, but its log had no watchdog lines:
-  the password prompt's shell had ended the background watchdog. It now runs as a one-shot launchd job, which CI
-  checks after installing the package.
+  the password prompt's shell had ended the background watchdog. The first CI run on GitHub then showed that a
+  job started with `launchctl submit` does not survive the package installer either. The watchdog is now a
+  one-shot daemon registered in launchd's system domain, which CI checks after installing the package.
 - The credits were checked against the early notes: what Gemini, DeepSeek and the REA toolkit each contributed is
   now recorded in [AUTHORS.md](../AUTHORS.md).
 

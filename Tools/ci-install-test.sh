@@ -44,10 +44,14 @@ cpu=$(ps -axo %cpu=,comm= | awk '$2 == "/usr/sbin/coreaudiod" { print int($1); e
 
 print "Watchdog"
 WATCH_LABEL=ghostbox-revenant.driver-watchdog
-sudo launchctl list $WATCH_LABEL >/dev/null 2>&1 && pass "watchdog running as a launchd job, outliving the installer" \
-    || fail "watchdog job $WATCH_LABEL not running after the installer finished"
+if sudo launchctl print system/$WATCH_LABEL >/dev/null 2>&1; then
+    pass "watchdog running as a launchd daemon, outliving the installer"
+else
+    fail "watchdog daemon $WATCH_LABEL not running after the installer finished"
+    note "install.log: $(grep -i 'ghostbox\|watchdog\|postinstall' /var/log/install.log 2>/dev/null | tail -8)"
+fi
 grep -q "watching Core Audio" /var/tmp/ghostbox-revenant-driver.log 2>/dev/null && pass "watchdog logged its start" \
-    || fail "no watchdog start in /var/tmp/ghostbox-revenant-driver.log"
+    || fail "no watchdog start in the log: $(tail -5 /var/tmp/ghostbox-revenant-driver.log 2>/dev/null)"
 
 print "App"
 pgrep -x GhostBoxRevenantGUI >/dev/null || open "$APP"
@@ -75,7 +79,7 @@ pkill -x GhostBoxRevenantGUI 2>/dev/null
 print "Uninstall"
 sudo /bin/sh "$APP/Contents/Resources/install-driver.sh" uninstall >/dev/null && [[ ! -d "$DRIVER" ]] \
     && pass "driver removed by install-driver.sh uninstall" || fail "driver uninstall"
-sudo launchctl list $WATCH_LABEL >/dev/null 2>&1 && fail "watchdog still running after uninstall" \
+sudo launchctl print system/$WATCH_LABEL >/dev/null 2>&1 && fail "watchdog still running after uninstall" \
     || pass "watchdog stopped by uninstall"
 
 if (( failures )); then print "$failures check(s) failed"; exit 1; fi

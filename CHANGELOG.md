@@ -18,7 +18,7 @@ control panel.
   Check, MIDI and System pages, and a menu bar item.
 - Fit to Window, horizontal, vertical and meters-only layouts, keyboard and scroll control, native menus.
 - Update Driver: installs the bundled driver with the administrator prompt and a 3-minute Core Audio watchdog
-  (a one-shot launchd job, so it outlives the prompt and the package installer).
+  (a one-shot launchd daemon, so it outlives the prompt and the package installer).
 - `mbox3-ctl` command-line tool with JSON output.
 - Universal installer package and disk image for macOS 13 or later (Apple Silicon and Intel).
 - Tests (driver, library, app model, engine, panel) and a CI pipeline that installs the package on macOS 14,

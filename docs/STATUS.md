@@ -30,7 +30,7 @@ still to be reported, and the installer has not yet run on another Mac. Publish 
 - [ ] **Streaming through the restructured driver**: installed on Oct 29; play and record to confirm.
 - [ ] **Balanced and Low latency modes on hardware**, and the round-trip figure in a DAW.
 - [ ] **The watchdog after an in-app update.** The first update showed that the background watchdog never ran
-      (the password prompt's shell ended it). It now runs as a launchd job; CI checks this for the package, and
+      (the password prompt's shell ended it). It now runs as a launchd daemon; CI checks this for the package, and
       the next in-app update should log "watching Core Audio" in `/var/tmp/ghostbox-revenant-driver.log`.
 - [ ] **Tuner pitch messages**: confirm the Control-port messages and whether notes count from A.
 - [ ] **Multi button**: which MIDI message it sends.

@@ -11,7 +11,7 @@ sleep 2
 # Restarting Core Audio mid-stream can leave the Mbox ignoring playback until it is replugged
 "$APP/Contents/Resources/mbox3-ctl" reenumerate >/dev/null 2>&1 || true
 # Watch Core Audio for 3 minutes; remove the driver again if it pins the CPU (log: /var/tmp/ghostbox-revenant-driver.log)
-/bin/sh "$APP/Contents/Resources/install-driver.sh" watch-background >/dev/null 2>&1 || true
+/bin/sh "$APP/Contents/Resources/install-driver.sh" watch-background >/dev/null || true   # errors go to install.log
 CONSOLE_USER=$(stat -f %Su /dev/console)
 if [ -n "$CONSOLE_USER" ] && [ "$CONSOLE_USER" != "root" ]; then
     launchctl asuser "$(id -u "$CONSOLE_USER")" open "$APP" 2>/dev/null || true

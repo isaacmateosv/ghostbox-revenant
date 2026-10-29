@@ -101,8 +101,9 @@ Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=
 - Toggles from the panel use explicit-value actions (set_global, set_tuner) because the ActionQueue coalesces.
 - Don't run Tools/driver_test or stream_test while the installed driver is streaming (exclusive access).
 - Installing the driver needs the user's password; use `--watch` style watchdog (auto-remove if coreaudiod > 80%).
-  In the background it must run as a launchd job (`launchctl submit`): the admin prompt's shell and the package
-  installer kill leftover background processes (the owner's first in-app update logged no watchdog lines).
+  In the background it runs as a one-shot daemon bootstrapped into launchd's **system** domain (plist in a private
+  mktemp folder): the admin prompt's shell and the package installer kill leftover background processes, and a
+  `launchctl submit` job under the installer died too (first CI run on GitHub, all five runners).
 
 ## Build
 `./build.sh [all|test|tools|app|driver|ctl|pkg|dmg|install-app|install-driver [--watch]|uninstall|clean]` —

@@ -10,14 +10,16 @@
 # Mbox ignoring playback until it is replugged). The watchdog then watches coreaudiod for 3 minutes and removes
 # the driver again if Core Audio pins the CPU, so the Mac's audio always comes back. Log: /var/tmp/ghostbox-revenant-driver.log
 #
-# In the background the watchdog runs as a one-shot launchd job: a plain background process does not survive,
-# because the password prompt's shell and the package installer end the processes a script leaves behind.
+# In the background the watchdog runs as a one-shot launchd daemon in the system domain. A background process
+# does not survive (the package installer and the password prompt's shell end what a script leaves behind), and
+# neither does a job from `launchctl submit` under the installer, which lands in the installer's own context.
 
 HAL=/Library/Audio/Plug-Ins/HAL
 DST="$HAL/GhostBoxRevenant.driver"
 LEGACY="$HAL/Mbox3.driver"   # the same driver under its name before the project was renamed
 LOG=/var/tmp/ghostbox-revenant-driver.log
 WATCH_LABEL=ghostbox-revenant.driver-watchdog
+WATCH_DIRS=/var/tmp/ghostbox-revenant-watchdog   # prefix of the private folders holding its job definition
 SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"   # launchd needs an absolute path
 
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*" | tee -a "$LOG"; }
@@ -44,9 +46,28 @@ watch() {
 }
 
 watch_background() {
-    launchctl remove "$WATCH_LABEL" 2>/dev/null
-    if ! launchctl submit -l "$WATCH_LABEL" -- /bin/sh "$SELF" watch-job; then
-        nohup /bin/sh "$SELF" watch >/dev/null 2>&1 &   # fallback where launchctl submit is unavailable
+    launchctl bootout system/"$WATCH_LABEL" 2>/dev/null
+    rm -rf "$WATCH_DIRS".*
+    dir=$(mktemp -d "$WATCH_DIRS.XXXXXX") || return 1   # root-owned and private: launchd trusts only such plists
+    cat > "$dir/$WATCH_LABEL.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>$WATCH_LABEL</string>
+    <key>ProgramArguments</key>
+    <array><string>/bin/sh</string><string>$SELF</string><string>watch-job</string><string>$dir</string></array>
+    <key>RunAtLoad</key><true/>
+</dict>
+</plist>
+PLIST
+    chmod 644 "$dir/$WATCH_LABEL.plist"
+    if launchctl bootstrap system "$dir/$WATCH_LABEL.plist"; then
+        log "watchdog scheduled with launchd"
+    else
+        log "launchd refused the watchdog; running it as a background process instead"
+        rm -rf "$dir"
+        nohup /bin/sh "$SELF" watch >/dev/null 2>&1 &
     fi
 }
 
@@ -84,12 +105,14 @@ case "$1" in
     watch-background)
         watch_background
         ;;
-    watch-job)  # started by launchd (watch_background)
+    watch-job)  # started by launchd (watch_background); $2 is the folder holding the job definition
         watch
-        launchctl remove "$WATCH_LABEL"  # unloads this job and ends it; launchd would otherwise keep it loaded
+        case "$2" in "$WATCH_DIRS".*) rm -rf "$2" ;; esac
+        launchctl bootout system/"$WATCH_LABEL"  # unloads this job, which ends it
         ;;
     uninstall)
-        launchctl remove "$WATCH_LABEL" 2>/dev/null
+        launchctl bootout system/"$WATCH_LABEL" 2>/dev/null
+        rm -rf "$WATCH_DIRS".*
         rm -rf "$DST" "$LEGACY"
         killall coreaudiod 2>/dev/null
         log "driver removed, Core Audio restarted"

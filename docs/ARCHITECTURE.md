@@ -112,8 +112,8 @@ ends, so the pointer never fights the network.
   signatures, versions and the package contents.
 - The installer puts the app in `/Applications` and the driver in `/Library/Audio/Plug-Ins/HAL`, restarts Core
   Audio, replugs the Mbox in software and starts a 3-minute watchdog (`Installer/install-driver.sh`) that removes
-  the driver again if Core Audio pins the CPU. The watchdog runs as a one-shot launchd job, because the installer
-  and the password prompt's shell end any background process a script leaves behind.
+  the driver again if Core Audio pins the CPU. The watchdog runs as a one-shot daemon in launchd's system domain,
+  because the installer and the password prompt's shell end any process a script leaves behind.
 - Tests need no hardware: `Tests/DriverTests.cpp` (clock model, packet codec, taper, addressing),
   `Tests/AppModelTests.swift` (mixer law, meters, tuner, persistence), `Tests/EngineTests.swift` (the engine
   against a fake Mbox and a fake driver) and `Tests/PanelTests.js` (the panel's gain math against the C taper).
