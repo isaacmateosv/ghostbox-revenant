@@ -116,6 +116,8 @@ installs the package on macOS 14, 15 and 26 (Apple Silicon and Intel) before pub
   the password prompt's shell had ended the background watchdog. The first CI run on GitHub then showed that a
   job started with `launchctl submit` does not survive the package installer either. The watchdog is now a
   one-shot daemon registered in launchd's system domain, which CI checks after installing the package.
+- First public push the same evening, to [GitHub](https://github.com/isaacmateosv/ghostbox-revenant). After the
+  watchdog fix, CI passed on macOS 14 Sonoma, 15 Sequoia and 26 Tahoe, on Apple Silicon and Intel.
 - The credits were checked against the early notes: what Gemini, DeepSeek and the REA toolkit each contributed is
   now recorded in [AUTHORS.md](../AUTHORS.md).
 

@@ -5,7 +5,8 @@ missing. Updated 2026-10-29.
 
 **Summary:** release candidate. Everything has been built, unit tested and used on one Mac with a real Mbox 3.
 The restructured driver is installed on that Mac (through the app's *Update Driver…*) but its listening test is
-still to be reported, and the installer has not yet run on another Mac. Publish the first build as a pre-release (`v1.0.0-rc.1`) until the checks marked *pending* are done.
+still to be reported. On GitHub's Macs the package installs and runs on macOS 14, 15 and 26 (Apple Silicon and
+Intel); it has not yet run on another real Mac with an Mbox. Publish the first build as a pre-release (`v1.0.0-rc.1`) until the checks marked *pending* are done.
 
 ## Verified
 
@@ -24,13 +25,14 @@ still to be reported, and the installer has not yet run on another Mac. Publish 
 | No memory errors or undefined behaviour in tested code | AddressSanitizer and UBSan on the C++ and Swift tests; Clang static analyzer clean |
 | Builds from a clean checkout | Built and tested from only the files in the repository |
 | In-app driver update: password prompt, install, software replug, Core Audio restart | On the owner's Mac (Oct 29); Core Audio loaded the new driver in Safe mode |
+| The package on macOS 14, 15 and 26, Apple Silicon and Intel: install, signatures, native CLI, Core Audio loading the driver, the app and its API security, the watchdog surviving the installer, uninstall | GitHub Actions on every push ([CI](https://github.com/isaacmateosv/ghostbox-revenant/actions/workflows/ci.yml)), first green run Oct 29 |
 
 ## Pending (needs the hardware or other machines)
 
 - [ ] **Streaming through the restructured driver**: installed on Oct 29; play and record to confirm.
 - [ ] **Balanced and Low latency modes on hardware**, and the round-trip figure in a DAW.
 - [ ] **The watchdog after an in-app update.** The first update showed that the background watchdog never ran
-      (the password prompt's shell ended it). It now runs as a launchd daemon; CI checks this for the package, and
+      (the password prompt's shell ended it). It now runs as a launchd daemon, verified for the package on all CI runners;
       the next in-app update should log "watching Core Audio" in `/var/tmp/ghostbox-revenant-driver.log`.
 - [ ] **Tuner pitch messages**: confirm the Control-port messages and whether notes count from A.
 - [ ] **Multi button**: which MIDI message it sends.
