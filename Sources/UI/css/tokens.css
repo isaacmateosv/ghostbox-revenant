@@ -1,0 +1,47 @@
+/* Design tokens. Every colour and size the panel uses is defined here. */
+:root {
+    color-scheme: dark;
+
+    --bg: #121316;
+    --surface-1: #18191d;       /* groups */
+    --surface-2: #1e2025;       /* strips, cards */
+    --surface-3: #282b32;       /* controls */
+    --surface-4: #33363e;       /* hover */
+    --line: rgba(255, 255, 255, 0.07);
+    --line-strong: rgba(255, 255, 255, 0.14);
+
+    --text: #eceef2;
+    --text-2: #a9adb7;
+    --text-3: #747985;
+
+    --accent: #f5a524;          /* selection: active mix, focus (Avid amber) */
+    --accent-soft: rgba(245, 165, 36, 0.16);
+    --on: #5fd13f;              /* on / signal / linked */
+    --on-soft: rgba(95, 209, 63, 0.16);
+    --solo: #f2c94c;
+    --mute: #ff5c5c;
+    --clip: #ff3b30;
+    --info: #4cc2ff;
+    --fx: #b17cff;
+    --ghost: #48e1ff;           /* brand only */
+
+    --meter-low: #3ecf5e;
+    --meter-mid: #e9c23a;
+    --meter-high: #ff4b3e;
+
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.35);
+
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    --fs: 12px;
+    --fs-small: 11px;
+    --fs-tiny: 10px;
+
+    --gap: 10px;
+    --master-w: 250px;
+    --strip-w: 72px;
+    --fader-h: 176px;
+    --knob: 30px;
+}

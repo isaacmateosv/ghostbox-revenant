@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GhostBox Revenant</title>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/console.css">
+<link rel="stylesheet" href="css/controls.css">
+<link rel="stylesheet" href="css/panels.css">
+<link rel="stylesheet" href="css/layouts.css">
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+<div id="viewport">
+<div id="app">
+
+    <header class="topbar">
+        <div class="brand" title="GhostBox Revenant: operations center for the Avid Mbox 3">
+            <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+                <path d="M6 28V15a10 10 0 0 1 20 0v13l-3.33-2.5L19.33 28 16 25.5 12.67 28 9.33 25.5z"/>
+                <circle cx="12.5" cy="15" r="2"/><circle cx="19.5" cy="15" r="2"/>
+            </svg>
+            <div class="brand-text">
+                <span class="brand-name">GhostBox <b>Revenant</b></span>
+                <span class="brand-sub"><span id="brandDot" class="brand-dot"></span><span id="brandSub">Connecting…</span></span>
+            </div>
+        </div>
+        <nav class="mix-switch" role="tablist" aria-label="Stereo mix">
+            <button id="tabAnalog" role="tab" data-action="mix" data-arg="analog" title="Mix for Outputs 1/2 and the headphones (⌘1)">
+                <span class="seg-title">Analog 1/2</span><span class="seg-sub">Line out + phones</span>
+            </button>
+            <button id="tabSpdif" role="tab" data-action="mix" data-arg="spdif" title="Mix for Outputs 3/4, the S/PDIF output (⌘2)">
+                <span class="seg-title">S/PDIF L/R</span><span class="seg-sub">Digital out</span>
+            </button>
+        </nav>
+        <div class="toolbar">
+            <button id="btnTuner" data-action="tuner" title="Tuner (⌘T); also Dim + Mono on the Mbox">Tuner</button>
+            <button data-action="setup" title="Clock, latency and panel options (⌘,)">Setup</button>
+            <button data-action="flow" title="Signal flow diagram">Flow</button>
+            <span class="sep"></span>
+            <div class="presets">
+                <select id="presetSelect" aria-label="Presets" title="Saved mixer settings"></select>
+                <button data-action="loadPreset" title="Load the selected preset">Load</button>
+                <button data-action="savePreset" title="Save the current settings as a preset">Save…</button>
+                <button class="ghost" data-action="deletePreset" title="Delete the selected preset" aria-label="Delete preset" data-icon="trash"></button>
+            </div>
+            <span class="sep"></span>
+            <div class="segmented layout-switch" role="radiogroup" aria-label="Layout">
+                <button data-action="layout" data-arg="horizontal" title="Horizontal (⌥⌘1)" data-icon="horizontal"></button>
+                <button data-action="layout" data-arg="horizontal_meters" title="Horizontal, meters only (⌥⌘2)" data-icon="horizontalMeters"></button>
+                <button data-action="layout" data-arg="vertical" title="Vertical (⌥⌘3)" data-icon="vertical"></button>
+                <button data-action="layout" data-arg="vertical_meters" title="Vertical, meters only (⌥⌘4)" data-icon="verticalMeters"></button>
+            </div>
+            <button id="btnFit" class="toggle" data-action="fit" title="Fit the whole panel in the window (⌘9)" data-icon="fit"> Fit</button>
+            <button class="ghost" data-action="about" title="About GhostBox Revenant GUI">About</button>
+        </div>
+    </header>
+
+    <div id="banners">
+        <div id="bannerOffline" class="banner warn" hidden><span>Mbox 3 not connected. Plug it in: your mix is restored automatically.</span></div>
+        <div id="bannerSolo" class="banner solo" hidden><span>Solo is on, so only soloed channels are heard.</span>
+            <button data-action="clearSolos">Clear solos</button></div>
+        <div id="bannerDriver" class="banner info" hidden><span id="bannerDriverText"></span>
+            <button id="bannerDriverAction" class="primary" data-action="installDriver" hidden>Install Driver…</button>
+            <button data-action="dismissDriverBanner">Dismiss</button></div>
+    </div>
+
+    <main class="console">
+        <section class="group">
+            <header class="group-head"><h2>Hardware Inputs</h2><span id="meterModeBadge" class="badge">Post-fader meters</span></header>
+            <div id="hwStrips" class="strips"></div>
+            <div class="links">
+                <button id="link_hw12" class="link" data-action="link" data-arg="hw12" title="Link Inputs 1 and 2 (faders, solo, mute, sends)">Link 1–2</button>
+                <button id="link_hw34" class="link" data-action="link" data-arg="hw34" title="Link the S/PDIF inputs">Link S/PDIF</button>
+            </div>
+        </section>
+        <section class="group">
+            <header class="group-head"><h2>Software Returns</h2><span class="badge">From your DAW</span></header>
+            <div id="swStrips" class="strips"></div>
+            <div class="links">
+                <button id="link_sw12" class="link" data-action="link" data-arg="sw12" title="Link Returns 1 and 2">Link 1–2</button>
+                <button id="link_sw34" class="link" data-action="link" data-arg="sw34" title="Link Returns 3 and 4">Link 3–4</button>
+            </div>
+        </section>
+        <section id="master" class="group master"></section>
+    </main>
+
+    <section class="effects">
+        <div class="group sends">
+            <header class="group-head"><h2>Input FX Sends</h2><span id="fxSendModeBadge" class="badge">Post-fader</span></header>
+            <div id="hwSends" class="send-row"></div>
+        </div>
+        <div class="group sends">
+            <header class="group-head"><h2>Return FX Sends</h2><span class="badge">Shared by both mixes</span></header>
+            <div id="swSends" class="send-row"></div>
+        </div>
+        <div id="fxReturns" class="group fxret"></div>
+        <div id="dsp" class="group dsp"></div>
+    </section>
+
+    <footer id="statusbar" class="statusbar"></footer>
+
+    <section id="tools" class="tools">
+        <header class="tools-head">
+            <nav role="tablist" aria-label="Tools">
+                <button data-action="toolsTab" data-arg="hardware">Hardware Check</button>
+                <button data-action="toolsTab" data-arg="multi">Multi Button</button>
+                <button data-action="toolsTab" data-arg="midi">MIDI</button>
+                <button data-action="toolsTab" data-arg="system">System</button>
+            </nav>
+            <span class="grow"></span>
+            <button id="btnTools" class="ghost mini" data-action="tools" title="Show or hide this panel (⌥⌘T)">Hide</button>
+        </header>
+        <div class="tools-body">
+
+            <div data-pane="hardware" class="cards">
+                <div class="card">
+                    <h3>Input 1 <span id="hcLed0" class="led" title="Sig/Clip"></span></h3>
+                    <div class="level"><div id="hcBar0" class="fill"></div></div>
+                    <div class="level-db"><span id="hcDb0">−∞</span> <small>dBFS</small><small id="hcPeak0"></small></div>
+                    <p class="note">Front <strong>Instrument</strong> jack with the source button out, or the rear <strong>XLR/TRS</strong> combo jack with it pushed in. Gain, the −20 dB pad and Soft Limit are analog: set them on the Mbox and watch this meter. Aim for peaks around −12 dBFS.</p>
+                </div>
+                <div class="card">
+                    <h3>Input 2 <span id="hcLed1" class="led" title="Sig/Clip"></span></h3>
+                    <div class="level"><div id="hcBar1" class="fill"></div></div>
+                    <div class="level-db"><span id="hcDb1">−∞</span> <small>dBFS</small><small id="hcPeak1"></small></div>
+                    <p class="note">Seen from behind, the rear jacks line up with their front controls (Input 2 is the far-left combo jack). Red means the converter is clipping: lower the gain.</p>
+                </div>
+                <div class="card">
+                    <h3>+48V phantom power</h3>
+                    <p class="note">Switched only by the <strong>+48V</strong> button on the Mbox (hold it for the soft-button hold time). Its LED is the only indicator: no software, Avid's included, can switch or read it. It feeds <strong>both XLR inputs</strong>.</p>
+                    <p class="note">Condenser mics need it; dynamic mics don't mind it. With <strong>ribbon mics</strong>, switch it off and wait 10 s before plugging or unplugging.</p>
+                </div>
+                <div class="card">
+                    <h3>Device</h3>
+                    <dl id="hcDevice"></dl>
+                    <div class="row">
+                        <button data-action="reenumerate" title="Software replug: fixes a Mbox that ignores playback">Reset USB Connection</button>
+                        <button data-action="initialize">Initialize Defaults…</button>
+                    </div>
+                </div>
+            </div>
+
+            <div data-pane="multi" class="cards" hidden>
+                <div class="card">
+                    <h3>1. Teach it the button</h3>
+                    <p class="note">The Multi button talks to the computer over the Mbox's <strong>Control</strong> MIDI port. Click <strong>Learn</strong>, then press Multi on the Mbox once.</p>
+                    <div class="row">
+                        <button id="multiLearn" class="toggle" data-action="multiLearn">Learn</button>
+                        <button data-action="multiForget">Forget</button>
+                        <span id="multiTrigger" class="num muted">not learned</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>2. Choose what it does</h3>
+                    <select id="multiAction" data-change="multiAction" style="width:100%"></select>
+                    <p class="note" style="margin-top:8px">Play/Pause, Space Bar and Record send key presses (macOS asks once for Accessibility permission). <strong>Forward to DAW</strong> resends the message on a virtual MIDI port called <em>Mbox 3 Multi Button</em>: map it with your DAW's MIDI learn.</p>
+                </div>
+                <div class="card">
+                    <h3>Soft button hold time</h3>
+                    <select id="multiHold" data-change="holdTime">
+                        <option value="250">250 ms</option><option value="500">500 ms</option>
+                        <option value="750">750 ms</option><option value="1000">1 s</option>
+                    </select>
+                    <p class="note" style="margin-top:8px">How long to hold the soft buttons (Multi, +48V, Mono, Dim). Last Multi action: <span id="multiLast" class="num">none</span></p>
+                </div>
+            </div>
+
+            <div data-pane="midi" class="cards" hidden>
+                <div class="card" style="grid-column: span 2">
+                    <h3>MIDI from the Mbox <span id="midiCount" class="badge">0 messages</span></h3>
+                    <div id="midiLog" class="log">No MIDI received yet.</div>
+                    <p class="note" style="margin-top:8px"><strong>External</strong> is the 5-pin MIDI In/Out on the back: it works in every app through Audio MIDI Setup. <strong>Control</strong> is Avid's control port, which carries the Multi button and the tuner.</p>
+                </div>
+                <div class="card">
+                    <h3>Patch names</h3>
+                    <div id="midiFiles" class="list">Scanning…</div>
+                    <div class="row">
+                        <button data-action="openAMS">Open Audio MIDI Setup</button>
+                        <button class="ghost" data-action="rescan">Rescan</button>
+                    </div>
+                </div>
+            </div>
+
+            <div data-pane="system" class="cards" hidden>
+                <div class="card">
+                    <h3>This Mac</h3>
+                    <dl id="sysInfo"><dt>Loading…</dt><dd></dd></dl>
+                    <div class="row"><button data-action="revealData">Show Settings Folder</button><button class="ghost" data-action="rescan">Refresh</button></div>
+                </div>
+                <div class="card">
+                    <h3>Recording space</h3>
+                    <div class="row" style="margin-top:0">
+                        <input id="calcTracks" type="number" min="1" max="256" value="16" style="width:62px" data-input="calc"> tracks ×
+                        <input id="calcMinutes" type="number" min="1" max="600" value="60" style="width:62px" data-input="calc"> min
+                    </div>
+                    <div class="row">
+                        <select id="calcFormat" data-change="calc">
+                            <option value="16">16-bit</option><option value="24" selected>24-bit</option><option value="32">32-bit float</option>
+                        </select>
+                        <select id="calcRate" data-change="calc">
+                            <option>44100</option><option selected>48000</option><option>88200</option><option>96000</option>
+                        </select>
+                    </div>
+                    <div id="calcResult" class="level-db" style="margin-top:10px"></div>
+                    <p class="note" style="margin-top:6px">Mono tracks, uncompressed. Disable disk sleep for long sessions.</p>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+</div>
+</div>
+
+<dialog id="dlgSetup" aria-labelledby="setupTitle">
+    <div class="dlg-head"><h2 id="setupTitle">Setup</h2><button data-action="closeDialog">Done</button></div>
+    <div class="dlg-body" id="setupBody"></div>
+</dialog>
+
+<dialog id="dlgTuner" aria-labelledby="tunerTitle">
+    <div class="dlg-head"><h2 id="tunerTitle">Tuner</h2><span class="badge">Also: Dim + Mono on the Mbox</span><button data-action="closeTuner">Done</button></div>
+    <div class="dlg-body tuner">
+        <div id="tunerNote" class="note">–</div>
+        <div id="tunerCents" class="cents">Play a single note</div>
+        <div class="scale"><div class="zone"></div><div class="ticks"></div><div id="tunerNeedle" class="needle"></div></div>
+        <div class="legend"><span>−50 ¢</span><span>0</span><span>+50 ¢</span></div>
+        <div class="leds">
+            <span>Input 1 LED <span id="tunerLed0" class="led"></span> flat</span>
+            <span>Input 2 LED <span id="tunerLed1" class="led"></span> sharp</span>
+        </div>
+        <div id="tunerSource" class="source">Listening to the Mbox's own tuner.</div>
+        <div id="tunerMic" class="row" style="justify-content:center; margin-top:8px" hidden>
+            <select id="tunerInput" data-change="tunerInput" style="min-width:220px"></select>
+        </div>
+        <div class="row" style="justify-content:center; margin-top:8px">
+            <button id="tunerMicToggle" class="ghost mini" data-action="tunerMic">Use a microphone instead</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog id="dlgFlow" aria-labelledby="flowTitle" style="width:min(760px, 94vw)">
+    <div class="dlg-head"><h2 id="flowTitle">Signal flow</h2><button data-action="closeDialog">Done</button></div>
+    <div class="dlg-body flow" id="flowBody"></div>
+</dialog>
+
+<dialog id="dlgAbout" aria-labelledby="aboutTitle">
+    <div class="dlg-head"><h2 id="aboutTitle">About</h2><button data-action="closeDialog">Done</button></div>
+    <div class="dlg-body" id="aboutBody"></div>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

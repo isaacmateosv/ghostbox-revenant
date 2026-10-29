@@ -1,0 +1,47 @@
+/* Custom controls: rotary knob, fader, meter. Rendered by js/controls/*. */
+
+/* Knob */
+.knob { position: relative; width: var(--knob); height: var(--knob); cursor: ns-resize; touch-action: none; border-radius: 50%; flex: none; }
+.knob svg { display: block; overflow: visible; }
+.knob .track { fill: none; stroke: #0d0e11; stroke-linecap: round; }
+.knob .arc { fill: none; stroke: var(--on); stroke-linecap: round; filter: drop-shadow(0 0 2px rgba(95, 209, 63, 0.55)); }
+.knob.fx .arc { stroke: var(--fx); filter: drop-shadow(0 0 2px rgba(177, 124, 255, 0.55)); }
+.knob .body { fill: url(#knobGrad); stroke: #08090b; stroke-width: 1; }
+.knob .ptr { stroke: #f2f3f5; stroke-linecap: round; }
+.knob:hover .body { filter: brightness(1.15); }
+
+/* Fader: scale | track with cap */
+.fader { position: relative; width: 44px; height: 100%; cursor: ns-resize; touch-action: none; flex: none; border-radius: 6px; }
+.fader .scale { position: absolute; left: 0; top: 9px; bottom: 9px; width: 16px; pointer-events: none; }
+.fader .tick { position: absolute; right: 0; transform: translateY(-50%); font-size: 8.5px; color: var(--text-3); font-family: var(--mono); }
+.fader .tick.unity { color: var(--text-2); }
+.fader .rail { position: absolute; left: 25px; top: 9px; bottom: 9px; width: 5px; border-radius: 3px; background: #0b0c0e; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8); }
+.fader .rail-fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 3px; background: linear-gradient(0deg, rgba(95, 209, 63, 0.15), rgba(95, 209, 63, 0.55)); }
+.fader .unity-mark { position: absolute; left: 19px; width: 17px; height: 1px; background: var(--line-strong); }
+.fader .cap {
+    position: absolute; left: 15px; width: 25px; height: 18px; margin-top: -9px; border-radius: 4px;
+    background: linear-gradient(180deg, #e9eaee, #a6a9b1 46%, #8b8e96 54%, #c9cbd1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.fader .cap::after { content: ""; position: absolute; left: 3px; right: 3px; top: 8px; height: 2px; background: #2b2d33; border-radius: 1px; }
+.fader:hover .cap { filter: brightness(1.06); }
+.fader.dragging .cap { filter: brightness(1.12); }
+
+/* Meter: clip LED over a bar with a peak line */
+.meter { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 9px; height: 100%; cursor: pointer; flex: none; }
+.meter .clip { width: 9px; height: 5px; border-radius: 2px; background: #3a1515; flex: none; }
+.meter .clip.on { background: var(--clip); box-shadow: 0 0 6px var(--clip); }
+.meter .bar { position: relative; flex: 1; width: 100%; border-radius: 3px; background: #0b0c0e; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8); }
+.meter .fill {
+    position: absolute; inset: 0; transform-origin: 50% 100%; transform: scaleY(0);
+    background: linear-gradient(0deg, var(--meter-low) 0%, var(--meter-low) 70%, var(--meter-mid) 86%, var(--meter-high) 100%);
+    transition: transform 70ms linear;
+}
+.meter .peak { position: absolute; left: 0; right: 0; height: 2px; bottom: 0; background: #f2f3f5; opacity: 0; transition: opacity 0.3s; }
+.meter .peak.show { opacity: 0.85; }
+.meter.wide { width: 12px; }
+.meter.wide .clip { width: 12px; }
+
+/* dB scale next to big meters */
+.meter-scale { position: relative; width: 18px; height: 100%; font-size: 8.5px; color: var(--text-3); font-family: var(--mono); flex: none; }
+.meter-scale span { position: absolute; right: 0; transform: translateY(50%); }

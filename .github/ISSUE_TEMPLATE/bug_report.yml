@@ -1,0 +1,49 @@
+name: Problem report
+description: Something does not work with your Mbox 3
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. The details below help reproduce the problem. The **System** tab of the panel lists
+        most of them (versions, macOS, processor).
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "e.g. 15.6 Sequoia"
+    validations:
+      required: true
+  - type: dropdown
+    id: mac
+    attributes:
+      label: Mac
+      options:
+        - Apple Silicon Mac
+        - Intel Mac
+        - Hackintosh (OpenCore)
+        - Intel Mac with OpenCore Legacy Patcher
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: App and driver versions
+      placeholder: "About: app 1.0.0, driver 1.0.0, firmware 1.08"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      description: Steps to reproduce help a lot (which app, sample rate, buffer size, latency mode).
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (optional)
+      description: |
+        Driver install log: `cat /var/tmp/ghostbox-revenant-driver.log`. Device status: run
+        `"/Applications/GhostBox Revenant GUI.app/Contents/Resources/mbox3-ctl" status`.
+      render: text

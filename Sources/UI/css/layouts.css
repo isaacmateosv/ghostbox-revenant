@@ -1,0 +1,36 @@
+/* Layout variants: vertical, meters only, narrow windows, and Fit to Window. */
+
+/* Vertical (the DCP's compact console stack) */
+.layout-vertical #app { max-width: 640px; }
+.layout-vertical .console, .layout-vertical .effects { grid-template-columns: minmax(0, 1fr); }
+.layout-vertical .fxret { grid-row: auto; }
+.layout-vertical .dsp { grid-column: auto; }
+.layout-vertical .master .master-body { justify-content: center; }
+
+/* Meters only: strips keep their meters, the master shows the four outputs */
+.meters-only .strip .pan, .meters-only .strip .sm, .meters-only .strip .fader, .meters-only .strip .readout,
+.meters-only .links, .meters-only .effects, .meters-only .master-body, .meters-only .master .globals,
+.meters-only #copyMix { display: none !important; }
+.meters-only .strip .fader-meter { height: 260px; }
+.meters-only .strip .meter { width: 14px; }
+.meters-only .strip .meter .clip { width: 14px; }
+.meters-only .master .outputs { display: flex; }
+
+/* Narrow windows: master under the two strip groups, then a single column */
+@media (max-width: 1060px) {
+    .console, .effects { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .master, .fxret { grid-column: span 2; }
+    .fxret { grid-row: auto; }
+    .master .master-body { justify-content: center; }
+    .master .master-controls { flex: none; }
+}
+@media (max-width: 720px) {
+    .console, .effects { grid-template-columns: minmax(0, 1fr); }
+    .master, .fxret, .dsp { grid-column: auto; }
+    .toolbar { margin-left: 0; }
+}
+
+/* Fit to Window: js/views/fit.js scales #app so everything fits the window height */
+html.fit body { overflow-y: auto; }
+html.fit #viewport { position: relative; overflow: hidden; }
+html.fit #app { margin: 0; max-width: none; }

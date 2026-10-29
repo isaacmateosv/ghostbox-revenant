@@ -1,0 +1,5 @@
+#!/bin/sh
+# Quit a running GhostBox Revenant GUI (or the app's pre-rename "Mbox 3 Control") so its files can be replaced
+pkill -x GhostBoxRevenantGUI 2>/dev/null || true
+pkill -x Mbox3Control 2>/dev/null || true
+exit 0

@@ -1,0 +1,46 @@
+# Build output
+/build/
+*.o
+*.dSYM/
+
+# macOS and editor clutter
+.DS_Store
+._*
+__MACOSX/
+.vscode/
+.idea/
+*.swp
+
+# Local working copies and backups (never published)
+/backups/
+
+# Legacy material that must not be published:
+#   archive-copy/  contains a copy of Avid's driver binaries (studied locally for interoperability only)
+#   _archive/      early experiments built against that material
+#   venv/, __pycache__/, prebuilt binaries, personal session state
+/legacy/archive-copy/
+/legacy/_archive/
+/legacy/venv/
+/legacy/__pycache__/
+/legacy/app/
+/legacy/presets/
+/legacy/mbox3-ctl
+/legacy/last_state.json
+/legacy/*.log
+
+# Third-party or copyrighted reference material: keep it out of the repository
+*.pkg
+*.dmg
+*.zip
+*.pdf
+*.kext/
+*.dext/
+AvidMbox_bin
+Archive*/
+
+# Personal assistant settings and the maintainer's private notes
+/.claude/settings.local.json
+/CLAUDE.local.md
+
+# A verbatim excerpt of Linux kernel code (credited in docs instead)
+/legacy/mbox3_registers.txt

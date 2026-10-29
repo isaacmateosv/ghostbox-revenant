@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!-- Hardened-runtime exceptions, applied only when the app is signed with a Developer ID (see docs/RELEASING.md) -->
+<dict>
+    <!-- The tuner can fall back to a microphone -->
+    <key>com.apple.security.device.audio-input</key><true/>
+    <!-- "Install Driver…" runs the installer script through the administrator prompt (AppleScript) -->
+    <key>com.apple.security.automation.apple-events</key><true/>
+</dict>
+</plist>

@@ -1,0 +1,14 @@
+GhostBox Revenant — free software for the Avid Mbox (3rd generation)
+Copyright © 2026 isaacmateosv and contributors
+
+This package installs the GhostBox Revenant GUI app and the Mbox 3 Core Audio driver. Both are free software: you may
+use, study, share and modify them under the GNU General Public License, version 3 or (at your option) any later
+version. The full license follows.
+
+NO WARRANTY. This software is provided "as is", without warranty of any kind, to the extent permitted by law
+(GPL sections 15 and 16). The driver runs inside macOS's audio system; the installer watches Core Audio for three
+minutes and removes the driver again if Core Audio misbehaves. Use it at your own risk.
+
+Independent project. Not affiliated with, endorsed by or supported by Avid Technology, Inc. Avid, Mbox,
+Digidesign and Pro Tools are trademarks of Avid Technology, Inc., used here only to name the hardware this
+software works with. This software contains no Avid code, firmware or documentation.

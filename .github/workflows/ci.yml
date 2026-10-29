@@ -1,0 +1,74 @@
+# Every push and pull request: unit tests, a universal build (Apple Silicon + Intel, macOS 13 or later), artifact
+# checks, then the installer is installed and exercised on several macOS versions and both CPU types.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swiftc --version | head -1
+          clang --version | head -1
+
+      - name: Unit tests (driver, MboxKit, app model, engine, panel)
+        run: ./build.sh test
+
+      - name: Build the app, driver, installer and disk image, then check them
+        run: ./build.sh dist
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: GhostBoxRevenant-${{ github.sha }}
+          path: build/dist/
+          if-no-files-found: error
+          retention-days: 30
+
+  install:
+    name: Install on ${{ matrix.name }}
+    needs: build
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    # macOS 14 runners are being retired by GitHub: a failure there does not fail the run
+    continue-on-error: ${{ matrix.retiring }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-26, name: "macOS 26 Tahoe, Apple Silicon", retiring: false }
+          - { os: macos-26-intel, name: "macOS 26 Tahoe, Intel", retiring: false }
+          - { os: macos-15, name: "macOS 15 Sequoia, Apple Silicon", retiring: false }
+          - { os: macos-15-intel, name: "macOS 15 Sequoia, Intel", retiring: false }
+          - { os: macos-14, name: "macOS 14 Sonoma, Apple Silicon", retiring: true }
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: Tools
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: GhostBoxRevenant-${{ github.sha }}
+          path: dist
+
+      - name: Install the package and check the driver and the app
+        run: Tools/ci-install-test.sh dist/GhostBoxRevenant-*.pkg

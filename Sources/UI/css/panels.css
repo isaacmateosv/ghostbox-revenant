@@ -1,0 +1,76 @@
+/* The tools panel (Hardware Check, Multi Button, MIDI, System) and the dialogs. */
+.tools { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.tools-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.tools.closed .tools-head { border-bottom: 0; }
+.tools-head nav { display: flex; gap: 2px; }
+.tools-head nav button { border: 0; background: transparent; color: var(--text-2); padding: 5px 12px; border-radius: 6px; }
+.tools-head nav button:hover { color: var(--text); background: var(--surface-3); }
+.tools-head nav button.on { color: var(--accent); background: var(--accent-soft); }
+.tools-head .grow { flex: 1; }
+.tools-body { padding: 12px; }
+.tools.closed .tools-body { display: none; }
+
+.cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); align-items: start; }
+.card { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+.card h3 { font-size: var(--fs-small); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.card h3 .led, .card h3 .badge { margin-left: auto; }
+.card .note { font-size: var(--fs-small); color: var(--text-2); line-height: 1.5; }
+.card .note strong { color: var(--text); font-weight: 600; }
+.card .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.card dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 0; font-size: var(--fs-small); }
+.card dt { color: var(--text-3); }
+.card dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+
+.level { height: 10px; background: #0b0c0e; border-radius: 5px; overflow: hidden; margin: 4px 0 6px; }
+.level .fill { height: 100%; width: 100%; transform-origin: 0 50%; transform: scaleX(0); transition: transform 70ms linear;
+    background: linear-gradient(90deg, var(--meter-low) 70%, var(--meter-mid) 86%, var(--meter-high)); }
+.level-db { font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; }
+.level-db small { font-size: var(--fs-tiny); color: var(--text-3); margin-left: 6px; }
+
+.log { font-family: var(--mono); font-size: var(--fs-tiny); background: #0e0f12; border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 8px; height: 132px; overflow-y: auto; color: var(--text-2); line-height: 1.55; user-select: text; -webkit-user-select: text; }
+.log b { color: var(--info); font-weight: 600; }
+.list { font-size: var(--fs-small); color: var(--text-2); max-height: 92px; overflow-y: auto; line-height: 1.5; }
+
+/* Dialogs */
+dialog {
+    background: var(--surface-1); color: var(--text); border: 1px solid var(--line-strong); border-radius: 14px;
+    padding: 0; width: min(660px, 94vw); max-height: 90vh; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+dialog::backdrop { background: rgba(5, 6, 8, 0.6); }
+dialog .dlg-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+dialog .dlg-head h2 { font-size: 14px; }
+dialog .dlg-head button { margin-left: auto; }
+dialog .dlg-body { padding: 14px 16px 16px; overflow-y: auto; max-height: calc(90vh - 52px); }
+.field { display: grid; grid-template-columns: 150px 1fr; gap: 6px 14px; align-items: center; margin-bottom: 12px; }
+.field > .label { color: var(--text-2); font-size: var(--fs-small); }
+.field .hint { grid-column: 2; font-size: var(--fs-tiny); color: var(--text-3); line-height: 1.45; }
+.section-title { font-size: var(--fs-tiny); text-transform: uppercase; letter-spacing: 0.9px; color: var(--text-3); margin: 6px 0 10px; }
+.section { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px; }
+.checks { display: grid; gap: 8px; font-size: var(--fs-small); }
+
+/* Tuner */
+.tuner { text-align: center; }
+.tuner .note { font-size: 64px; font-weight: 800; line-height: 1; letter-spacing: -1px; color: var(--text-3); margin: 6px 0 2px; }
+.tuner .note.in-tune { color: var(--on); text-shadow: 0 0 24px rgba(95, 209, 63, 0.4); }
+.tuner .note.close { color: var(--accent); }
+.tuner .cents { font-size: 14px; font-variant-numeric: tabular-nums; color: var(--text-2); min-height: 20px; }
+.tuner .scale { position: relative; height: 46px; margin: 16px 6px 6px; border-radius: 8px; background: #0e0f12; border: 1px solid var(--line); overflow: hidden; }
+.tuner .zone { position: absolute; left: calc(50% - 3%); width: 6%; top: 0; bottom: 0; background: rgba(95, 209, 63, 0.14); }
+.tuner .ticks { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(255, 255, 255, 0.08) calc(10% - 1px) 10%); }
+.tuner .needle { position: absolute; top: 4px; bottom: 4px; width: 4px; margin-left: -2px; left: 50%; border-radius: 2px; background: var(--accent); transition: left 0.08s; opacity: 0.25; }
+.tuner .needle.live { opacity: 1; }
+.tuner .legend { display: flex; justify-content: space-between; font-size: var(--fs-tiny); color: var(--text-3); margin: 0 6px; }
+.tuner .leds { display: flex; justify-content: center; gap: 26px; margin: 14px 0 8px; font-size: var(--fs-small); color: var(--text-2); }
+.tuner .source { font-size: var(--fs-small); color: var(--text-2); margin-top: 10px; }
+
+/* Flow diagram and about */
+.flow svg { width: 100%; background: #0f1013; border: 1px solid var(--line); border-radius: 8px; }
+.about-hero { text-align: center; padding: 10px 0 16px; }
+.about-hero .brand-mark { display: block; width: 56px; height: 56px; margin: 0 auto 8px; }
+.about-hero .title { font-size: 22px; font-weight: 800; }
+.about-hero .title b { color: var(--ghost); text-shadow: 0 0 12px rgba(72, 225, 255, 0.35); }
+.about-hero .sub { color: var(--text-2); margin-top: 4px; }
+.about-legal { color: var(--text-3); font-size: var(--fs-tiny); line-height: 1.45; margin-top: 10px; }
+.about-links a { color: var(--ghost); text-decoration: none; }
+.about-links a:hover { text-decoration: underline; }
