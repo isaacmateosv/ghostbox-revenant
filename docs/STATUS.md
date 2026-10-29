@@ -6,7 +6,7 @@ missing. Updated 2026-10-29.
 **Summary:** release candidate. Everything has been built, unit tested and used on one Mac with a real Mbox 3.
 The restructured driver is installed on that Mac (through the app's *Update Driver…*) but its listening test is
 still to be reported. On GitHub's Macs the package installs and runs on macOS 14, 15 and 26 (Apple Silicon and
-Intel); it has not yet run on another real Mac with an Mbox. Publish the first build as a pre-release (`v1.0.0-rc.1`) until the checks marked *pending* are done.
+Intel); it has not yet run on another real Mac with an Mbox. The first pre-release, [v1.0.0-rc.1](https://github.com/isaacmateosv/ghostbox-revenant/releases/tag/v1.0.0-rc.1), is out (Oct 29); 1.0.0 follows once the checks marked *pending* are done.
 
 ## Verified
 
