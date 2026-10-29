@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Installs the package on a CI machine (no Mbox attached) and checks that it works on that macOS version and CPU:
-# files in place, signatures valid, the native slice runs, Core Audio loads the driver, the app serves its panel,
-# Core Audio stays healthy, and the uninstaller works. GitHub's macOS runners have passwordless sudo.
+# files in place, signatures valid, the native slice runs, Core Audio loads the driver, the watchdog runs, the app
+# serves its panel, Core Audio stays healthy, and the uninstaller works. GitHub's macOS runners have passwordless sudo.
 #
 #   Tools/ci-install-test.sh <GhostBoxRevenant-x.y.z.pkg>
 set -u
@@ -39,8 +39,6 @@ done
 latency=$("$CTL" latency 2>&1)
 [[ "$latency" == *'"latency":"safe"'* ]] && pass "driver answers through Core Audio: $latency" \
     || note "latency property not readable without the Mbox attached ($latency)"
-cpu=$(ps -axo %cpu=,comm= | awk '$2 == "/usr/sbin/coreaudiod" { print int($1); exit }')
-(( ${cpu:-0} < 50 )) && pass "coreaudiod CPU ${cpu:-?}%" || fail "coreaudiod CPU ${cpu}%"
 
 print "Watchdog"
 WATCH_LABEL=ghostbox-revenant.driver-watchdog
@@ -73,6 +71,21 @@ print("  ok    panel API up: app", i["app_version"], "| driver", i["driver_versi
     [[ "$code" == 403 ]] && pass "foreign websites are refused" || fail "foreign origin got HTTP $code"
 else
     fail "the app did not answer on 127.0.0.1:18080"
+fi
+
+print "Core Audio health"
+# CPU used over 10 s with the driver loaded and the app running. (A single ps sample right after the installer
+# restarted Core Audio mostly measures its start-up work: 72 % once on an Intel runner.)
+cpu_seconds() { ps -o time= -p "$1" | awk '{ n = split($1, p, ":"); s = 0; for (i = 1; i <= n; i++) s = s * 60 + p[i]; print s }'; }
+pid=$(pgrep -x coreaudiod)
+t0=$([[ -n "$pid" ]] && cpu_seconds $pid)
+sleep 10
+t1=$([[ -n "$pid" ]] && cpu_seconds $pid)
+if [[ -z "$t0" || -z "$t1" ]]; then
+    fail "coreaudiod was not running for the whole measurement"
+else
+    cpu=$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%d", (b - a) * 10 }')   # percent of one core
+    (( cpu < 50 )) && pass "coreaudiod used ${cpu}% CPU over 10 s" || fail "coreaudiod used ${cpu}% CPU over 10 s"
 fi
 pkill -x GhostBoxRevenantGUI 2>/dev/null
 
