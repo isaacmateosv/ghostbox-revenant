@@ -19,7 +19,7 @@ jobs:
       SIGNING: ${{ secrets.MACOS_CERTIFICATES_P12 != '' }}
       NOTARIZING: ${{ secrets.MACOS_CERTIFICATES_P12 != '' && secrets.NOTARY_PASSWORD != '' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Check that the tag matches VERSION
         run: |
