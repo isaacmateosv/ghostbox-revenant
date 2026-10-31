@@ -1,12 +1,12 @@
 # Status
 
 Where version 1.0.0 stands: what is verified and how, what still needs testing, known limitations and what is
-missing. Updated 2026-10-29.
+missing. Updated 2026-10-31.
 
 **Summary:** release candidate. Everything has been built, unit tested and used on one Mac with a real Mbox 3.
-The restructured driver is installed on that Mac (through the app's *Update Driver…*) but its listening test is
-still to be reported. On GitHub's Macs the package installs and runs on macOS 14, 15 and 26 (Apple Silicon and
-Intel); it has not yet run on another real Mac with an Mbox. The first pre-release, [v1.0.0-rc.1](https://github.com/isaacmateosv/ghostbox-revenant/releases/tag/v1.0.0-rc.1), is out (Oct 29); 1.0.0 follows once the checks marked *pending* are done.
+That Mac now runs the published rc.1 package (installed Oct 31: driver loaded, watchdog healthy), but the listening
+test with the restructured driver is still to be reported. On GitHub's Macs the package installs and runs on
+macOS 14, 15 and 26 (Apple Silicon and Intel); it has not yet run on a second Mac with an Mbox. The first pre-release, [v1.0.0-rc.1](https://github.com/isaacmateosv/ghostbox-revenant/releases/tag/v1.0.0-rc.1), is out (Oct 29); 1.0.0 follows once the checks marked *pending* are done.
 
 ## Verified
 
@@ -26,13 +26,15 @@ Intel); it has not yet run on another real Mac with an Mbox. The first pre-relea
 | Builds from a clean checkout | Built and tested from only the files in the repository |
 | In-app driver update: password prompt, install, software replug, Core Audio restart | On the owner's Mac (Oct 29); Core Audio loaded the new driver in Safe mode |
 | The package on macOS 14, 15 and 26, Apple Silicon and Intel: install, signatures, native CLI, Core Audio loading the driver, the app and its API security, the watchdog surviving the installer, uninstall | GitHub Actions on every push ([CI](https://github.com/isaacmateosv/ghostbox-revenant/actions/workflows/ci.yml)), first green run Oct 29 |
+| The rc.1 package on a real Mac with the Mbox (Apple Silicon, macOS 27): replaces the pre-rename driver, Core Audio loads the new one, the watchdog runs its 3 minutes from the installer (Core Audio at 1 % CPU), the app connects, settings kept; installed files identical to the release | On the development Mac, Oct 31 |
 
 ## Pending (needs the hardware or other machines)
 
-- [ ] **Streaming through the restructured driver**: installed on Oct 29; play and record to confirm.
+- [ ] **Streaming through the restructured driver**: installed on Oct 29, then from the rc.1 package on Oct 31;
+      play and record to confirm.
 - [ ] **Balanced and Low latency modes on hardware**, and the round-trip figure in a DAW.
 - [ ] **The watchdog after an in-app update.** The first update showed that the background watchdog never ran
-      (the password prompt's shell ended it). It now runs as a launchd daemon, verified for the package on all CI runners;
+      (the password prompt's shell ended it). It now runs as a launchd daemon, verified for the package on all CI runners and on the development Mac;
       the next in-app update should log "watching Core Audio" in `/var/tmp/ghostbox-revenant-driver.log`.
 - [ ] **Tuner pitch messages**: confirm the Control-port messages and whether notes count from A.
 - [ ] **Multi button**: which MIDI message it sends.
