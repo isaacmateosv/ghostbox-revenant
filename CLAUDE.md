@@ -39,8 +39,8 @@ first when it exists, and keep its Status section current before stopping.
   CLOCKPROBE), `stream_test.cpp`, `diagnose.sh`, `make_icon.swift`. `./build.sh tools` builds them.
 - `Installer/` pkg scripts (postinstall starts the watchdog), `install-driver.sh` (install/watch/uninstall, run as
   root by the app's Update Driver and by build.sh), Distribution.xml, ReadMe, Uninstall.command.
-- `.github/` CI (`ci.yml`: tests, universal build, artifact checks, install tests on macOS 26/15 arm64+Intel and
-  14 arm64) and release (`release.yml`: tag vX.Y.Z → GitHub release; optional Developer ID signing+notarization
+- `.github/` CI (`ci.yml`: tests, universal build, artifact checks, install tests on macOS 26/15 arm64+Intel)
+  and release (`release.yml`: tag vX.Y.Z → GitHub release; optional Developer ID signing+notarization
   from secrets), dependabot, issue form. `Tools/verify-artifacts.sh`, `ci-install-test.sh`,
   `ci-import-certificates.sh`, `notarize.sh`, `release-notes.sh` support them.
 - Docs: `README.md`, `docs/` (ARCHITECTURE, PROTOCOL, LOGBOOK, STATUS, INSTALL, RELEASING), `CHANGELOG.md`,

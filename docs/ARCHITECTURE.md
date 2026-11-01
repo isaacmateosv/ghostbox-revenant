@@ -117,4 +117,4 @@ ends, so the pointer never fights the network.
 - Tests need no hardware: `Tests/DriverTests.cpp` (clock model, packet codec, taper, addressing),
   `Tests/AppModelTests.swift` (mixer law, meters, tuner, persistence), `Tests/EngineTests.swift` (the engine
   against a fake Mbox and a fake driver) and `Tests/PanelTests.js` (the panel's gain math against the C taper).
-  CI also installs the package on several macOS versions and both CPU types (see [RELEASING.md](RELEASING.md)).
+  CI also installs the package on macOS 15 and 26, Apple Silicon and Intel (see [RELEASING.md](RELEASING.md)).

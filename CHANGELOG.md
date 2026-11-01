@@ -21,8 +21,8 @@ control panel.
   (a one-shot launchd daemon, so it outlives the prompt and the package installer).
 - `mbox3-ctl` command-line tool with JSON output.
 - Universal installer package and disk image for macOS 13 or later (Apple Silicon and Intel).
-- Tests (driver, library, app model, engine, panel) and a CI pipeline that installs the package on macOS 14,
-  15 and 26, Apple Silicon and Intel.
+- Tests (driver, library, app model, engine, panel) and a CI pipeline that installs the package on macOS 15
+  and 26, Apple Silicon and Intel.
 - Documentation: architecture, protocol, logbook, status, install and release guides.
 
 ### Fixed since 1.0.0-rc.1
