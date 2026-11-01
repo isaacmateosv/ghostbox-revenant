@@ -8,7 +8,9 @@ This installs:
 Works on Apple Silicon and Intel Macs with macOS 13 Ventura or later.
 Not affiliated with Avid. Avid's own Mbox driver should not be installed at the same time.
 
-During installation macOS restarts its audio system, so sound stops for a second.
+Pause anything playing through the Mbox before you install. macOS restarts its audio system during the
+installation (sound stops for a second), and if audio is playing at that moment the Mbox can stay silent
+until you unplug it and plug it back in.
 
 First run:
   1. Plug in the Mbox. GhostBox Revenant GUI opens and restores your mix.

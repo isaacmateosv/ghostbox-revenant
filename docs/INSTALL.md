@@ -12,7 +12,8 @@
 
 1. Download `GhostBoxRevenant-<version>.dmg` from the GitHub releases page. Optionally check it:
    `shasum -a 256 -c SHA256SUMS.txt`.
-2. Open the disk image and run **Install GhostBox Revenant.pkg**.
+2. Pause anything that is playing through the Mbox, then open the disk image and run
+   **Install GhostBox Revenant.pkg**.
 3. If macOS refuses to open it (builds without an Apple Developer ID signature):
    - **macOS 15 Sequoia and later**: open **System Settings > Privacy & Security**, scroll down and click
      **Open Anyway** next to the message about the package, then confirm with your password.
@@ -27,7 +28,8 @@ misbehaves, so your Mac's sound always comes back (log: `/var/tmp/ghostbox-reven
 
 ## Updating
 
-Install the newer package the same way, or, when the app carries a newer driver than the one installed, click
+Pause your audio first, then install the newer package the same way, or, when the app carries a newer driver than
+the one installed, click
 **Update Driver…** in its banner (About > **Reinstall Driver…** repairs an install). Your mixes and presets are
 kept.
 
@@ -50,7 +52,7 @@ Your mixes and presets stay in `~/Library/Application Support/GhostBox Revenant`
 
 | Symptom | What to do |
 |---|---|
-| No sound after installing or updating | Menu bar > **Reset USB Connection**, or replug the Mbox |
+| No sound after installing or updating | Pause the audio, then unplug the Mbox and plug it back in. Menu bar > **Reset USB Connection** helps only while nothing is playing |
 | No sound at all | Look for the yellow solo bar; check that Software Returns 1/2 are up in the mix you listen to (Analog 1/2 = Line Out and headphones) |
 | Clicks | Setup > Driver Latency > **Safe**; avoid shared USB hubs |
 | Audio MIDI Setup or apps hang | Core Audio is stuck: uninstall, restart, and report it with the issue form |

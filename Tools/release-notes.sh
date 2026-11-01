@@ -26,6 +26,8 @@ print
 print "### Install"
 print
 print "Download **GhostBoxRevenant-$VERSION.dmg**, open it and run **Install GhostBox Revenant.pkg**."
+print "Pause anything playing through the Mbox first: if audio is playing while the installer restarts Core Audio,"
+print "the Mbox can stay silent until you unplug it and plug it back in."
 print "Works on Apple Silicon and Intel Macs (including OpenCore hackintoshes) with macOS 13 Ventura or later."
 print
 if [[ "$SIGNED" == signed ]]; then

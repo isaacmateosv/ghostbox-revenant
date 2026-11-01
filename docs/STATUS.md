@@ -57,8 +57,9 @@ macOS 15 and 26 (Apple Silicon and Intel), and it passed on macOS 14 (Apple Sili
   installer once ([INSTALL.md](INSTALL.md)). The release pipeline signs and notarizes automatically once the
   credentials are added ([RELEASING.md](RELEASING.md)).
 - Mixer gains cannot be read back from the hardware: the app restores its saved state whenever the Mbox attaches.
-- Restarting Core Audio while audio is streaming can leave the Mbox ignoring playback until it is replugged (the
-  app's *Reset USB Connection* does it in software).
+- Restarting Core Audio while audio is streaming (installing or updating the driver does) can leave the Mbox
+  ignoring playback until it is unplugged and plugged back in. A software reset (*Reset USB Connection*) while
+  audio keeps playing does not clear it, so pause audio before installing (seen on Oct 31; a fix is planned).
 - One Mbox at a time.
 - Mixer gain tops out at 0 dB (the hardware reports no range).
 

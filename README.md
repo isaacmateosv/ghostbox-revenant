@@ -57,6 +57,10 @@ troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).
 - **Phantom power, gain, pad and Soft Limit** are analog controls on the Mbox; the Hardware Check page shows live
   levels to set them by. No software can switch them, Avid's included.
 - **Tuner** (⌘T, or Dim + Mono on the Mbox) and **Multi button** (Multi Button tab > Learn).
+- **Flow** shows how audio moves through the Mbox: the inputs go straight to your Mac (what you record), while the
+  hardware mixer builds what you hear.
+
+![Signal flow: the inputs go straight to the Mac, and the hardware mixer feeds the outputs](docs/images/flow.png)
 
 ## How this was built
 
