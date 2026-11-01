@@ -29,7 +29,9 @@ constexpr UInt32 kMaxPacket = 156;               // 13 frames x 12 bytes (enough
 constexpr UInt32 kMicroframesPerXfer = 8;        // 1 ms per transfer
 // USB completions usually arrive within 0.5 ms but are sometimes held back by the USB stack for up to ~5 ms
 // (measured; real-time priority does not help), so every queue and safety offset must ride out such stalls.
-constexpr UInt32 kInXfers = 16, kOutXfers = 16;  // transfers in flight (1 ms each)
+// Under load they can stall for more than 16 ms (seen while Safari launched), so IN keeps 32 ms queued: IN depth
+// adds no latency, and a schedule that falls behind the bus costs a resync.
+constexpr UInt32 kInXfers = 32, kOutXfers = 16;  // transfers in flight (1 ms each)
 constexpr UInt32 kRingFrames = 16384;            // power of two
 constexpr UInt32 kZeroTSPeriod = 1024;
 constexpr UInt32 kFeedbackSlots = 4096;          // power of two

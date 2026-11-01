@@ -68,7 +68,9 @@ Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=
   (macOS already exposes "Mbox" with ports **External** (5-pin DIN) and **Control** (Avid control port)).
 - Isochronous OUT packets must be **packed back to back** in the transfer buffer (cumulative frReqCount).
   Fixed 156-byte slots = garbled audio (the "distortion" bug). IN can use fixed slots (all requests 156).
-- USB completions arrive up to ~7 ms late (USB stack, not priority) → driver margins (latency modes).
+- USB completions arrive up to ~7 ms late (USB stack, not priority) → driver margins (latency modes). Under load
+  (an app launching) they can stall > 16 ms: an IN resync must keep device time continuous (skipped frames count as
+  silence) or the OUT stream drifts off the HAL's timeline and plays unwritten ring frames (noise).
 - Controller rejects iso frames scheduled too close to the bus ("TooNew" at lead 0-2 ms): keep OUT 5-10 ms
   ahead, never resync backwards, pump OUT from both IN and OUT completions.
 - Meter block (MEM 0x10 @0x2001, 15 words): 0-1 In1/In2, 2-3 S/PDIF in, 4-7 SW returns, 8-9 Out1/2,

@@ -1,6 +1,6 @@
 // Loads build/GhostBoxRevenant.driver in-process and drives it like coreaudiod would:
 // queries properties, starts IO, follows the zero timestamps, reads input, writes a -30 dBFS tone.
-// Usage: driver_test [seconds]
+// Usage: driver_test [seconds]   (env BUFFER: frames per IO cycle, default 512)
 #include <CoreAudio/AudioServerPlugIn.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <mach/mach_time.h>
@@ -112,7 +112,8 @@ int main(int argc, char** argv) {
             usleep(100000); }
         (*d)->StopIO(d, dev, 1); return 0;
     }
-    const UInt32 buf = 512;
+    const UInt32 buf = getenv("BUFFER") ? (UInt32)atoi(getenv("BUFFER")) : 512;
+    printf("IO buffer %u frames\n", buf);
     std::vector<float> io(buf * 4);
     double peak[4] = {0}, phase = 0, lastTSHost = 0, lastTSSample = -1;
     int cycles = 0, tsJumps = 0;

@@ -25,6 +25,13 @@ control panel.
   15 and 26, Apple Silicon and Intel.
 - Documentation: architecture, protocol, logbook, status, install and release guides.
 
+### Fixed since 1.0.0-rc.1
+- Playback no longer turns noisy after a USB stall. When the Mac held back USB completions for longer than the
+  input queue (seen while Safari launched), the driver restarted its input stream without counting the skipped
+  frames, which moved Core Audio's timeline away from the output stream until playback restarted. Skipped frames
+  now count as silence, sent output frames are cleared so a late write plays silence instead of older audio, and
+  the input queue is twice as deep (32 ms, no added latency).
+
 ### Notes
 - Not affiliated with Avid. Licensed under GPL-3.0-or-later.
 - Pre-release builds were called "Mbox 3 Control": the installer removes them, the app copies their settings, and

@@ -95,6 +95,15 @@ void watchRate(UInt64 frames) {
 void inputDone(Xfer* x) {
     UInt64 pos = gInPos.load(std::memory_order_relaxed);
     const UInt64 startPos = pos;
+    if (x->frame > gLastInEndFrame) {
+        // A resync skipped bus frames: count them as silence so device time stays locked to the bus. Otherwise the
+        // HAL's timeline moves away from the OUT stream, which then plays ring frames the HAL has not written yet
+        // (heard as noise until streaming restarts).
+        UInt64 gap = std::min<UInt64>((UInt64)llround((double)(x->frame - gLastInEndFrame) * gState.sampleRate.load() / 1000.0),
+                                      kRingFrames);
+        for (UInt64 i = 0; i < gap; i++) memset(codec::ringFrame(gInRing, pos + i), 0, kChannels * sizeof(float));
+        pos += gap;
+    }
     for (UInt32 f = 0; f < kMicroframesPerXfer; f++) {
         UInt32 frames = std::min(x->frames[f].frActCount / kBytesPerUSBFrame, kMaxPacket / kBytesPerUSBFrame);
         codec::unpackPacket(x->buf + f * kMaxPacket, frames, gInRing, pos);
@@ -143,8 +152,9 @@ void submitIn(Xfer* x) {
         gSubmitErrors++; gLastStatus = kr;
         os_log_error(driverLog(), "submit in failed: 0x%x, resyncing", kr);
         gInResyncs++;
-        gNextInFrame = busFrame() + 2;  // fell off the schedule: restart just ahead of the bus
-        gClock.invalidate();
+        // Fell off the schedule: restart just ahead of the bus, never behind frames already queued. inputDone counts
+        // the skipped frames as silence, so the timeline (and the clock model's anchor) stays valid.
+        gNextInFrame = std::max(busFrame() + 2, gNextInFrame);
     }
 }
 
@@ -166,6 +176,9 @@ void fillOut(Xfer* x) {
     for (UInt32 f = 0; f < kMicroframesPerXfer; f++) {
         UInt32 frames = std::min(nextOutPacketFrames(), kMaxPacket / kBytesPerUSBFrame);
         nonZero += codec::packPacket(gOutRing, gOutPos, frames, p);
+        // Clear what was sent: a frame the HAL writes too late then plays as silence on the next lap, not as the audio
+        // the ring held kRingFrames earlier. (The HAL writes at most ~0.1 s ahead, far less than a lap.)
+        for (UInt32 i = 0; i < frames; i++) memset(codec::ringFrame(gOutRing, gOutPos + i), 0, kChannels * sizeof(float));
         p += frames * kBytesPerUSBFrame;
         gOutPos += frames;
         gOutPosShared.store(gOutPos, std::memory_order_release);
