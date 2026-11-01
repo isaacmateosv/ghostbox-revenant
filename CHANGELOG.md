@@ -31,6 +31,10 @@ control panel.
   frames, which moved Core Audio's timeline away from the output stream until playback restarted. Skipped frames
   now count as silence, sent output frames are cleared so a late write plays silence instead of older audio, and
   the input queue is twice as deep (32 ms, no added latency).
+- The Signal flow diagram (Flow) is redrawn. Several of its lines stopped short or led nowhere, and it left out
+  that the Mac's playback and the FX return reach both mixes. It now shows the two paths, what you record (the
+  inputs straight to the Mac) and what you hear (the hardware mixer), with three short notes on what that means
+  in practice, and it takes its colours from the panel's theme.
 
 ### Notes
 - Not affiliated with Avid. Licensed under GPL-3.0-or-later.

@@ -117,35 +117,46 @@ export function createDialogs(ctx) {
                 'Independent software. Not affiliated with or endorsed by Avid. Mbox is a trademark of Avid Technology.'));
     }
 
+    // The recording path bridges over the hardware mixer. Inputs (left) and the Mac (right) each feed both mixes and
+    // the FX send, the FX return feeds both mixes, and every wire starts and ends on a box edge.
     function renderFlow() {
         if ($('#flowBody').childElementCount) return;
-        const box = (x, y, w, label, color = '#3a3d45', text = '#e9eaee') =>
-            `<rect x="${x}" y="${y}" width="${w}" height="26" rx="5" fill="#1d1f24" stroke="${color}"/>` +
-            `<text x="${x + w / 2}" y="${y + 17}" fill="${text}" text-anchor="middle">${escapeHTML(label)}</text>`;
-        $('#flowBody').innerHTML = `<svg viewBox="0 0 680 300" font-family="-apple-system, sans-serif" font-size="11">
-            ${box(20, 30, 100, 'Input 1')}${box(20, 70, 100, 'Input 2')}${box(20, 110, 100, 'S/PDIF In L')}${box(20, 150, 100, 'S/PDIF In R')}
-            <rect x="250" y="24" width="160" height="72" rx="8" fill="#1d1f24" stroke="#f5a524"/>
-            <text x="330" y="54" fill="#f5a524" text-anchor="middle" font-weight="600">USB to and from</text>
-            <text x="330" y="72" fill="#e9eaee" text-anchor="middle">your Mac (4 in, 4 out)</text>
-            <rect x="220" y="140" width="220" height="30" rx="6" fill="#1d1f24" stroke="#5fd13f"/>
-            <text x="330" y="159" fill="#5fd13f" text-anchor="middle" font-weight="600">Analog 1/2 mix</text>
-            <rect x="220" y="186" width="220" height="30" rx="6" fill="#1d1f24" stroke="#4cc2ff"/>
-            <text x="330" y="205" fill="#4cc2ff" text-anchor="middle" font-weight="600">S/PDIF L/R mix</text>
-            <rect x="220" y="232" width="220" height="30" rx="6" fill="#1d1f24" stroke="#b17cff"/>
-            <text x="330" y="251" fill="#b17cff" text-anchor="middle" font-weight="600">Reverb / delay (FX)</text>
-            ${box(560, 120, 100, 'Headphones')}${box(560, 156, 100, 'Out 1 / Out 2')}${box(560, 200, 100, 'S/PDIF Out')}
-            <g stroke="#5fd13f" stroke-width="1.4" fill="none" opacity="0.85">
-              <path d="M120 43 H250 M120 83 H250 M120 123 H250 M120 163 H250"/>
-              <path d="M160 43 V245 H220 M175 83 V200 M190 123 V200 M205 163 V155 H220"/>
-              <path d="M440 155 H560 M500 155 V133 H560 M500 155 V169"/>
-            </g>
-            <path d="M440 201 H560" stroke="#4cc2ff" stroke-width="1.4" fill="none"/>
-            <path d="M440 247 H470 V155 M470 201" stroke="#b17cff" stroke-width="1.4" fill="none"/>
-            <path d="M330 96 V140" stroke="#f5a524" stroke-width="1.4" fill="none" stroke-dasharray="3 3"/>
-            <text x="338" y="122" fill="#a9adb7">Software Returns 1-4</text>
-            <text x="20" y="215" fill="#a9adb7">Inputs also go to the Mac</text>
-            <text x="20" y="230" fill="#a9adb7">and into both mixes and the FX sends.</text>
-        </svg>`;
+        const summary = 'Signal flow: the four inputs go straight to your Mac. In the hardware mixer, the inputs, the Mac\'s '
+            + 'Software Returns and the FX return feed the Analog 1/2 mix (Out 1/2 and headphones) and the S/PDIF L/R mix (S/PDIF Out).';
+        const box = (x, y, w, ht, cls = '') => `<rect class="fl-box ${cls}" x="${x}" y="${y}" width="${w}" height="${ht}" rx="6"/>`;
+        const label = (x, y, text, cls = '', anchor = 'middle') =>
+            `<text class="${cls}" x="${x}" y="${y}" text-anchor="${anchor}">${escapeHTML(text)}</text>`;
+        const heading = (x, y, path, meaning, anchor) => `<text x="${x}" y="${y}" text-anchor="${anchor}">`
+            + `<tspan class="fl-path">${escapeHTML(path)}</tspan><tspan class="fl-note"> · ${escapeHTML(meaning)}</tspan></text>`;
+        const wire = (color, d, cls = '') => `<path class="fl-wire fl-${color} ${cls}" d="${d}" marker-end="url(#flow-${color})"/>`;
+        const marker = color => `<marker id="flow-${color}" class="fl-${color}" viewBox="0 0 10 10" refX="9" refY="5" `
+            + `markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 1L10 5L0 9z"/></marker>`;
+        $('#flowBody').innerHTML = `<svg viewBox="0 0 680 300" role="img" aria-label="${escapeHTML(summary)}">
+            <defs>${['in', 'usb', 'fx', 'analog', 'spdif'].map(marker).join('')}</defs>
+            ${heading(340, 19, 'TO YOUR MAC', 'what you record', 'middle')}
+            <rect class="fl-zone" x="140" y="40" width="400" height="252" rx="10"/>
+            ${heading(154, 57, 'HARDWARE MIXER', 'what you hear', 'start')}
+            ${box(12, 108, 112, 136)}${label(68, 130, 'Inputs', 'fl-title')}
+            ${label(68, 154, 'Input 1')}${label(68, 176, 'Input 2')}${label(68, 198, 'S/PDIF In L')}${label(68, 220, 'S/PDIF In R')}
+            ${box(556, 108, 112, 136, 'fl-usb')}${label(612, 172, 'Your Mac', 'fl-title')}${label(612, 188, 'over USB', 'fl-note')}
+            ${box(210, 110, 260, 30, 'fl-analog')}${label(340, 129, 'Analog 1/2 mix', 'fl-title')}
+            ${box(270, 162, 140, 28, 'fl-fx')}${label(340, 180, 'Reverb / delay (FX)', 'fl-title')}
+            ${box(210, 212, 260, 30, 'fl-spdif')}${label(340, 231, 'S/PDIF L/R mix', 'fl-title')}
+            ${box(236, 66, 96, 24)}${label(284, 82, 'Out 1/2')}${box(348, 66, 96, 24)}${label(396, 82, 'Headphones')}
+            ${box(292, 262, 96, 24)}${label(340, 278, 'S/PDIF Out')}
+            ${wire('usb', 'M68 108V28H612V108')}
+            ${wire('in', 'M124 125H210')}${wire('in', 'M124 227H210')}${wire('fx', 'M124 176H270', 'fl-send')}
+            ${wire('usb', 'M556 125H470')}${wire('usb', 'M556 227H470')}${wire('fx', 'M556 176H410', 'fl-send')}
+            ${label(505, 119, 'DAW Ret 1-4', 'fl-note')}${label(505, 221, 'DAW Ret 1-4', 'fl-note')}
+            ${label(205, 170, 'FX send', 'fl-note')}${label(475, 170, 'FX send', 'fl-note')}
+            ${wire('fx', 'M340 162V140')}${wire('fx', 'M340 190V212')}
+            ${wire('analog', 'M284 110V90')}${wire('analog', 'M396 110V90')}${wire('spdif', 'M340 242V262')}
+        </svg>
+        <ul class="flow-notes">
+            <li><b>Recording is dry.</b> Your Mac gets the inputs before any fader or FX: the mixer changes what you hear, not what you record.</li>
+            <li><b>Your Mac comes back through the DAW Ret faders.</b> Pull them down or mute them and you won't hear the Mac.</li>
+            <li><b>Each mix has its own levels.</b> The Analog 1/2 and S/PDIF L/R tabs pick the mix you are setting.</li>
+        </ul>`;
     }
 
     function open(which) {
