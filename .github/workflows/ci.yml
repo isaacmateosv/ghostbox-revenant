@@ -1,5 +1,5 @@
 # Every push and pull request: unit tests, a universal build (Apple Silicon + Intel, macOS 13 or later), artifact
-# checks, then the installer is installed and exercised on several macOS versions and both CPU types.
+# checks, then the installer is installed and exercised on macOS 15 and 26, Apple Silicon and Intel.
 name: CI
 
 on:
@@ -49,17 +49,14 @@ jobs:
     needs: build
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
-    # macOS 14 runners are being retired by GitHub: a failure there does not fail the run
-    continue-on-error: ${{ matrix.retiring }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-26, name: "macOS 26 Tahoe, Apple Silicon", retiring: false }
-          - { os: macos-26-intel, name: "macOS 26 Tahoe, Intel", retiring: false }
-          - { os: macos-15, name: "macOS 15 Sequoia, Apple Silicon", retiring: false }
-          - { os: macos-15-intel, name: "macOS 15 Sequoia, Intel", retiring: false }
-          - { os: macos-14, name: "macOS 14 Sonoma, Apple Silicon", retiring: true }
+          - { os: macos-26, name: "macOS 26 Tahoe, Apple Silicon" }
+          - { os: macos-26-intel, name: "macOS 26 Tahoe, Intel" }
+          - { os: macos-15, name: "macOS 15 Sequoia, Apple Silicon" }
+          - { os: macos-15-intel, name: "macOS 15 Sequoia, Intel" }
     steps:
       - uses: actions/checkout@v7
         with:

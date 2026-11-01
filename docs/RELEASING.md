@@ -11,14 +11,14 @@ machine.
    disk image, then [`Tools/verify-artifacts.sh`](../Tools/verify-artifacts.sh), which checks that every binary
    has both architectures and targets macOS 13, that signatures, versions and the package contents are right,
    and writes SHA-256 checksums. The results are uploaded as a workflow artifact.
-2. **Install tests** on five machines: macOS 26 Tahoe and 15 Sequoia on both Apple Silicon and Intel, and macOS 14
-   Sonoma on Apple Silicon. Each one installs the package with [`Tools/ci-install-test.sh`](../Tools/ci-install-test.sh):
+2. **Install tests** on four machines: macOS 26 Tahoe and 15 Sequoia, each on Apple Silicon and Intel. Each one
+   installs the package with [`Tools/ci-install-test.sh`](../Tools/ci-install-test.sh):
    files and signatures in place, the CLI running natively on that CPU, Core Audio loading the driver, the app
    serving its panel and refusing foreign websites, Core Audio staying healthy, and the uninstaller working.
-   macOS 14 runners are being retired by GitHub, so a failure there does not fail the run.
 
-What CI cannot prove: audio with a real Mbox (no USB device on the runners), macOS 13 (no runners left) and Intel
-Sonoma (no free runner). Those stay on the [STATUS.md](STATUS.md) checklist.
+What CI cannot prove: audio with a real Mbox (no USB device on the runners), macOS 13 (no runners left) and macOS 14
+Sonoma (GitHub retires its runners on 2026-11-02; CI covered it on Apple Silicon up to v1.0.0-rc.1). Those stay on
+the [STATUS.md](STATUS.md) checklist.
 
 **Release** ([`.github/workflows/release.yml`](../.github/workflows/release.yml)), on a version tag: tests, build,
 optional signing and notarization, checks, then a GitHub release with the disk image, the package and

@@ -11,7 +11,7 @@ REPO_URL=${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-isaacmate
 INSTALL_DOC="$REPO_URL/blob/$TAG/docs/INSTALL.md"   # release pages do not resolve relative links
 
 if [[ "$TAG" == *-* ]]; then
-    print "> **Release candidate.** Used daily with a real Mbox 3 on one Mac and installed on macOS 14, 15 and 26"
+    print "> **Release candidate.** Used daily with a real Mbox 3 on one Mac and installed on macOS 15 and 26"
     print "> (Apple Silicon and Intel) by CI. Please report anything that does not work in"
     print "> [Issues]($REPO_URL/issues)."
     print

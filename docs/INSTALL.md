@@ -4,7 +4,7 @@
 
 - An Avid Mbox (3rd generation), USB ID `0dba:5000`.
 - A Mac with Apple Silicon or Intel, or an OpenCore hackintosh, running **macOS 13 Ventura or later**
-  (tested in CI on macOS 14 Sonoma, 15 Sequoia and 26 Tahoe; see [STATUS.md](STATUS.md)).
+  (tested in CI on macOS 15 Sequoia and 26 Tahoe, and on 14 Sonoma up to v1.0.0-rc.1; see [STATUS.md](STATUS.md)).
 - Nothing else: no Avid software, no Python, no Xcode. If Avid's old Mbox driver is still installed from an
   older macOS, uninstall it first.
 

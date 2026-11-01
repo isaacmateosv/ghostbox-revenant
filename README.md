@@ -82,7 +82,7 @@ took several stages, each with a different set of helpers:
    spinning at 100 % CPU, and replugging the Mbox in software after Core Audio restarts.
 6. **A native app and a release pipeline** (Claude): a Swift app with a modern panel, the hardware tuner's MIDI
    protocol, tests that need no hardware, universal builds, and GitHub Actions that install the package on
-   several macOS versions and both CPU types.
+   macOS 15 and 26, Apple Silicon and Intel.
 
 What helped most in the long run: real captures and hardware experiments over guesses, three independent sources
 for every register, and a user-space design that needs no kernel extension. The full story, with the early
