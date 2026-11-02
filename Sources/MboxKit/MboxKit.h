@@ -32,6 +32,7 @@ enum {
 typedef struct {
     uint16_t bcdDevice;      // firmware, e.g. 0x0108
     uint32_t locationID;     // USB location, changes when moved to another port
+    double enumeratedAgo;    // seconds since the Mbox (re)enumerated when it was opened, -1 when unknown
 } MboxInfo;
 
 typedef struct {
@@ -67,6 +68,9 @@ void mbox_pct_to_gain(int pct, uint8_t out[2]);
 double mbox_pct_to_db(int pct);
 int mbox_set_mix(MboxDevice* dev, uint16_t wIndex, uint16_t wValue, int pct);
 int mbox_set_effect(MboxDevice* dev, int preset, int volume255, int duration65535, int feedback255);
+// One effect control (MBOX_EFFECT_*; duration is 16-bit). Writing the preset while streaming silences the Mbox's
+// playback and monitor outputs until it is replugged (firmware 1.08), so callers send it only when it changes.
+int mbox_set_effect_control(MboxDevice* dev, uint16_t control, int value);
 
 int mbox_get_clock_source(MboxDevice* dev, int* source);
 int mbox_set_clock_source(MboxDevice* dev, int source);       // waits briefly for S/PDIF lock

@@ -26,6 +26,18 @@ control panel.
 - Documentation: architecture, protocol, logbook, status, install and release guides.
 
 ### Fixed since 1.0.0-rc.1
+- Moving an FX send or an effect knob no longer silences the Mbox. The panel re-sent the effect preset with every
+  effect change, and the Mbox drops its playback and monitor outputs whenever the preset is written while audio
+  streams, until it is replugged. Effect controls are now sent only when they change, the app keeps the preset of a
+  Mbox that has been up for a while when it starts, and a deliberate change of effect type replugs the Mbox in software
+  (about a second of silence).
+- Playback is no longer choppy. The driver revised each zero timestamp as new USB timestamps arrived, so Core Audio
+  re-anchored its IO timeline every few milliseconds ("Sample time is not consecutive") and skipped output: about
+  3 % of the frames at a 384-frame buffer, a third at 128 frames and up to three quarters at 96 kHz (Intel
+  hackintosh, macOS 13). Zero timestamps now follow a timeline that never revises a boundary once published and is
+  steered gently toward the USB clock.
+- Larger IO buffers: the zero timestamp period is now one lap of the rings (16384 frames) instead of 1024, which
+  limited every app to 384-frame buffers at every rate (4 ms at 96 kHz).
 - Playback no longer turns noisy after a USB stall. When the Mac held back USB completions for longer than the
   input queue (seen while Safari launched), the driver restarted its input stream without counting the skipped
   frames, which moved Core Audio's timeline away from the output stream until playback restarted. Skipped frames

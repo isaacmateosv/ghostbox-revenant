@@ -6,6 +6,7 @@
 #include <IOKit/IOCFPlugIn.h>
 #include <IOKit/IOKitLib.h>
 #include <IOKit/usb/IOUSBLib.h>
+#include <mach/mach_time.h>
 #include <cstdlib>
 
 struct MboxDevice {
@@ -25,6 +26,18 @@ MboxDevice* mbox_open(void) {
     CFRelease(p);
     io_service_t service = IOServiceGetMatchingService(kIOMainPortDefault, match);  // consumes match
     if (!service) return nullptr;
+    // The USB stack stamps every (re)enumeration with the host time in "sessionID"
+    double enumeratedAgo = -1;
+    if (CFTypeRef session = IORegistryEntryCreateCFProperty(service, CFSTR("sessionID"), nullptr, 0)) {
+        uint64_t stamp = 0;
+        if (CFGetTypeID(session) == CFNumberGetTypeID() && CFNumberGetValue((CFNumberRef)session, kCFNumberSInt64Type, &stamp)) {
+            mach_timebase_info_data_t tb;
+            mach_timebase_info(&tb);
+            uint64_t now = mach_absolute_time();
+            if (stamp && stamp <= now) enumeratedAgo = (double)(now - stamp) * tb.numer / tb.denom / 1e9;
+        }
+        CFRelease(session);
+    }
 
     IOCFPlugInInterface** plugin = nullptr;
     SInt32 score = 0;
@@ -43,6 +56,7 @@ MboxDevice* mbox_open(void) {
     UInt32 location = 0;
     (*intf)->GetLocationID(intf, &location);
     dev->info.locationID = location;
+    dev->info.enumeratedAgo = enumeratedAgo;
     return dev;
 }
 
@@ -53,7 +67,7 @@ void mbox_close(MboxDevice* dev) {
 }
 
 MboxInfo mbox_info(const MboxDevice* dev) {
-    MboxInfo none = {0, 0};
+    MboxInfo none = {0, 0, -1};
     return dev ? dev->info : none;
 }
 
