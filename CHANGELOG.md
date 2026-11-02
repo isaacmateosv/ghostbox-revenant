@@ -31,6 +31,8 @@ control panel.
   3 % of the frames at a 384-frame buffer, a third at 128 frames and up to three quarters at 96 kHz (Intel
   hackintosh, macOS 13). Zero timestamps now follow a timeline that never revises a boundary once published and is
   steered gently toward the USB clock.
+- Larger IO buffers: the zero timestamp period is now one lap of the rings (16384 frames) instead of 1024, which
+  limited every app to 384-frame buffers at every rate (4 ms at 96 kHz).
 - Playback no longer turns noisy after a USB stall. When the Mac held back USB completions for longer than the
   input queue (seen while Safari launched), the driver restarted its input stream without counting the skipped
   frames, which moved Core Audio's timeline away from the output stream until playback restarted. Skipped frames
