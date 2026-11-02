@@ -79,6 +79,9 @@ Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=
   (3/5/8/10 = 250/500/750/1000 ms). Confirmed from Avid's daemon symbols.
 - Mixer/FX-send gains are **write-only** (GET CUR returns 0 for every crosspoint; RANGE reports 0 subranges).
   Max gain treated as 0 dB.
+- Writing the effect **preset** (0x4301 wValue 0x0200, any value, even the current one) while audio streams silences
+  SW returns, Out 1/2 and FX output until a replug (USB, Core Audio and inputs keep running). Volume, duration and
+  feedback are safe. Send the preset only when it changes (`EffectSettings.changes`).
 - **No USB control exists for 48V, gain, pad, Soft Limit, front/rear source** (Avid's driver has none).
 - Tuner: while tuner mode is on, pitch arrives as MIDI Poly Aftertouch (0xAn note cents) on the Control port
   (cents signed 7-bit, clamp ±50). Note index meaning unconfirmed (0-11 from A per Avid order, else MIDI note).

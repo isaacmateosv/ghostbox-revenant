@@ -7,6 +7,7 @@ final class MboxHardware: MboxControl {
     private var dev: OpaquePointer?  // MboxDevice*
     private var mixWritten: [UInt32: UInt16] = [:]  // (unit << 16 | control) -> hardware gain word
     private var effectWritten: EffectSettings?
+    private var freshUntil = Date.distantPast  // effect presets can be written safely until then (see writeEffect)
     private(set) var lastWrite = Date.distantPast
 
     var isOpen: Bool { dev != nil }
@@ -19,6 +20,8 @@ final class MboxHardware: MboxControl {
     func open() -> Bool {
         dev = mbox_open()
         forgetWrites()
+        let ago = dev.map { mbox_info($0).enumeratedAgo } ?? -1
+        freshUntil = ago >= 0 ? Date().addingTimeInterval(max(0, 5 - ago)) : .distantPast
         return dev != nil
     }
 
@@ -70,11 +73,31 @@ final class MboxHardware: MboxControl {
         for (i, level) in hardware.enumerated() { setMix(unit: UInt16(MBOX_UNIT_FX_SENDS), control: mbox_fx_send_control(1, Int32(i)), level: level) }
     }
 
+    /// Sends only the effect controls that changed. A preset written while the Mbox streams silences its playback and
+    /// monitor outputs until it re-enumerates (a stream restart does not help); within seconds of an enumeration the
+    /// write is harmless. So on attach to a Mbox that has been up for a while the preset it holds is kept (we set it),
+    /// and a preset change made later is followed by a software replug, which costs about a second of silence.
     func writeEffect(_ effect: EffectSettings) {
         guard let dev, effect != effectWritten else { return }
         lastWrite = Date()
-        let r = mbox_set_effect(dev, Int32(effect.preset), Int32(effect.volume), Int32(effect.duration), Int32(effect.feedback))
-        effectWritten = MboxHardware.ok(r) ? effect : nil
+        let fresh = Date() < freshUntil
+        var ok = true, presetSent = false
+        for (control, value) in effect.changes(from: effectWritten ?? (fresh ? nil : .presetOnly(effect.preset))) {
+            if control == .preset { presetSent = true }
+            let wValue: Int32
+            switch control {
+            case .preset: wValue = Int32(MBOX_EFFECT_PRESET)
+            case .volume: wValue = Int32(MBOX_EFFECT_VOLUME)
+            case .duration: wValue = Int32(MBOX_EFFECT_DURATION)
+            case .feedback: wValue = Int32(MBOX_EFFECT_FEEDBACK)
+            }
+            ok = MboxHardware.ok(mbox_set_effect_control(dev, UInt16(wValue), Int32(value))) && ok
+        }
+        effectWritten = ok ? effect : nil
+        if presetSent && !fresh {
+            NSLog("Mbox3: effect preset changed, replugging the Mbox to restore its outputs")
+            reenumerate()
+        }
     }
 
     // MARK: - Front-panel registers and meters

@@ -96,6 +96,19 @@ enum AppModelTests {
             expect(MixLaw.effect(dsp) == EffectSettings(preset: 0, volume: 255, duration: 0, feedback: 0), "reverbs have no feedback")
             dsp["effect"] = 7
             expect(MixLaw.effect(dsp).feedback == 255, "echo uses feedback")
+            let written = EffectSettings(preset: 2, volume: 74, duration: 15073, feedback: 0)
+            expect(EffectSettings(preset: 2, volume: 80, duration: 15073, feedback: 0).changes(from: written).map(\.0) == [.volume],
+                   "a volume move sends only the volume, never the preset (a re-sent preset silences the Mbox)")
+            expect(EffectSettings(preset: 2, volume: 80, duration: 900, feedback: 0).changes(from: written).map(\.0) == [.volume, .duration],
+                   "only changed controls are sent")
+            expect(written.changes(from: written).isEmpty, "nothing changed, nothing sent")
+            expect(EffectSettings(preset: 6, volume: 74, duration: 15073, feedback: 0).changes(from: written).map(\.0) == [.preset],
+                   "a new preset is sent")
+            expect(written.changes(from: nil).count == 4, "unknown hardware state: everything is sent")
+            expect(written.changes(from: .presetOnly(2)).map(\.0) == [.volume, .duration, .feedback],
+                   "attach to a running Mbox: the preset it holds is kept, the rest is sent")
+            expect(written.changes(from: .presetOnly(5)).map(\.0) == [.preset, .volume, .duration, .feedback],
+                   "a different saved preset is sent")
         }
 
         test("meter ballistics") {
