@@ -36,7 +36,9 @@ first when it exists, and keep its Status section current before stopping.
   (mix law, meters, tuner, persistence), `EngineTests.swift` (engine with fake Mbox/driver), `PanelTests.js`
   (gain.js vs the C taper, fader laws; run by JavaScriptCore `jsc -m`). `./build.sh test` runs all + JS syntax.
 - `Tools/` `driver_test.cpp` (loads build/GhostBoxRevenant.driver in-process like coreaudiod; env LATENCYTEST, LATENCYMODE,
-  CLOCKPROBE), `stream_test.cpp`, `diagnose.sh`, `make_icon.swift`. `./build.sh tools` builds them.
+  CLOCKPROBE), `stream_test.cpp`, `halio.cpp` (end-to-end through coreaudiod: share of output never rendered),
+  `gbharness.cpp` (in-process with HAL-style IO cycle, driver counters), `carange.cpp` (buffer range per rate/mode),
+  `diagnose.sh`, `make_icon.swift`. `./build.sh tools` builds them. Hackintosh run: docs/TEST-HACKINTOSH-2026-11-01.md.
 - `Installer/` pkg scripts (postinstall starts the watchdog), `install-driver.sh` (install/watch/uninstall, run as
   root by the app's Update Driver and by build.sh), Distribution.xml, ReadMe, Uninstall.command.
 - `.github/` CI (`ci.yml`: tests, universal build, artifact checks, install tests on macOS 26/15 arm64+Intel)
@@ -81,7 +83,11 @@ Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=
   Max gain treated as 0 dB.
 - Writing the effect **preset** (0x4301 wValue 0x0200, any value, even the current one) while audio streams silences
   SW returns, Out 1/2 and FX output until a replug (USB, Core Audio and inputs keep running). Volume, duration and
-  feedback are safe. Send the preset only when it changes (`EffectSettings.changes`).
+  feedback are safe; a stream restart does not re-arm it; right after an enumeration the write is harmless. So the app
+  sends only changed effect controls, keeps the preset on attach to a Mbox enumerated more than 5 s ago (USB
+  `sessionID`, `MboxInfo.enumeratedAgo`), and replugs after a later preset change (`MboxHardware.writeEffect`).
+- Zero timestamps must never be revised once returned (Core Audio's raw clock re-anchors and drops output: the
+  choppy-playback bug). `ClockModel::zeroTimeStamp` publishes a steered linear timeline; period = ring size.
 - **No USB control exists for 48V, gain, pad, Soft Limit, front/rear source** (Avid's driver has none).
 - Tuner: while tuner mode is on, pitch arrives as MIDI Poly Aftertouch (0xAn note cents) on the Control port
   (cents signed 7-bit, clamp ±50). Note index meaning unconfirmed (0-11 from A per Avid order, else MIDI note).
