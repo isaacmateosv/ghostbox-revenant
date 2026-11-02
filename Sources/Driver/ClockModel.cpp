@@ -1,5 +1,6 @@
 #include "ClockModel.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace mbox {
@@ -61,14 +62,35 @@ void ClockModel::invalidate() {
     firstSample_ = -1;
 }
 
-void ClockModel::zeroTimeStamp(UInt64 hostNow, UInt32 period, Float64* sample, UInt64* host, UInt64* seed) const {
+void ClockModel::zeroTimeStamp(UInt64 hostNow, UInt32 period, Float64* sample, UInt64* host, UInt64* seed) {
+    // Each period may run up to this much faster or slower than the model, to pull the published timeline toward it
+    constexpr double kMaxSteer = 500e-6, kPhaseGain = 0.25;
     Locker l(&lock_);
     if (ticksPerFrame_ <= 0) { *sample = 0; *host = hostNow; *seed = seed_; return; }  // IO never started
-    double sNow = anchorSample_ + ((double)hostNow - anchorHost_) / ticksPerFrame_;
-    double boundary = floor(sNow / period) * period;
-    if (boundary < 0) boundary = 0;
-    *sample = boundary;
-    *host = (UInt64)(anchorHost_ + (boundary - anchorSample_) * ticksPerFrame_);
+    const double now = (double)hostNow;
+    for (int pass = 0; pass < 2; pass++) {
+        if (pubSeed_ != seed_ || pubSample_ < 0) {
+            // New timeline (stream started or the model re-anchored): start at the model's most recent boundary
+            double boundary = std::max(0.0, floor(modelSampleAt(now) / period) * period);
+            pubSample_ = boundary;
+            pubHost_ = anchorHost_ + (boundary - anchorSample_) * ticksPerFrame_;
+            pubTicksPerFrame_ = ticksPerFrame_;
+            pubSeed_ = seed_;
+        }
+        while (now >= pubHost_ + period * pubTicksPerFrame_) {
+            pubHost_ += period * pubTicksPerFrame_;
+            pubSample_ += period;
+            // Frames the device is ahead of the published timeline at this boundary; take a quarter of them out over
+            // the next period, within kMaxSteer, so consecutive boundaries stay smooth however jittery USB timestamps are
+            double err = modelSampleAt(pubHost_) - pubSample_;
+            if (fabs(err) > period * 0.5) { seed_++; break; }  // lost the device: start over and tell the HAL (new seed)
+            double steer = std::clamp(kPhaseGain * err / period, -kMaxSteer, kMaxSteer);
+            pubTicksPerFrame_ = ticksPerFrame_ * (1.0 - steer);
+        }
+        if (pubSeed_ == seed_) break;
+    }
+    *sample = pubSample_;
+    *host = (UInt64)pubHost_;
     *seed = seed_;
 }
 

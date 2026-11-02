@@ -1,6 +1,7 @@
 // Unit tests for the parts of the driver and MboxKit that need no hardware: the clock model, the 24-bit packet
 // codec, the mixer gain taper and mixer addressing. Run with ./build.sh test.
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -92,6 +93,49 @@ static void testClockModel() {
     CHECK(clock.seed() == seed0 + 3);
 }
 
+// What the HAL's raw IO clock needs from GetZeroTimeStamp, with USB timestamps as jittery as on a hackintosh's
+// XHCI (+-100 us) and an occasional completion held back 3 ms: a boundary, once returned, never changes; the next
+// one is exactly one period later; the spacing is smooth; and the timeline stays on the device's real position.
+static void testZeroTimeStamps() {
+    const double ticksPerSecond = 24e6, rate = 48000, ticksPerFrame = ticksPerSecond / rate, drift = 50e-6;
+    auto hostAt = [&](double pos) { return 5e6 + pos * ticksPerFrame * (1 - drift); };
+    auto truePos = [&](double host) { return (host - 5e6) / (ticksPerFrame * (1 - drift)); };
+    UInt32 rng = 12345;
+    auto noise = [&]() { rng = rng * 1664525 + 1013904223; return ((rng >> 8) / 16777216.0 * 2 - 1) * 100e-6 * ticksPerSecond; };
+
+    ClockModel clock;
+    clock.setHostTicksPerSecond(ticksPerSecond);
+    clock.reset((UInt64)hostAt(0), rate);
+    Float64 lastS = -1; UInt64 lastH = 0, lastSeed = 0;
+    int revised = 0, gaps = 0, seedChanges = 0, boundaries = 0;
+    double worstSpacingPpm = 0, worstTrackFrames = 0;
+    for (UInt64 ms = 1; ms <= 20000; ms++) {
+        double jitter = noise() + (ms % 500 == 0 ? 0.003 * ticksPerSecond : 0);
+        clock.update(ms * 48, (UInt64)(hostAt(ms * 48) + std::max(0.0, jitter)), rate);
+        for (int q = 0; q < 4; q++) {
+            Float64 s; UInt64 h, seed;
+            clock.zeroTimeStamp((UInt64)hostAt(ms * 48 + q * 12), kZeroTSPeriod, &s, &h, &seed);
+            if (ms < 100) { lastS = s; lastH = h; lastSeed = seed; continue; }  // past the first re-anchor
+            if (seed != lastSeed) seedChanges++;
+            else if (s == lastS && h != lastH) revised++;
+            else if (s != lastS) {
+                if (s != lastS + kZeroTSPeriod) gaps++;
+                double spacingPpm = (((double)h - lastH) / (kZeroTSPeriod * ticksPerFrame * (1 - drift)) - 1) * 1e6;
+                worstSpacingPpm = std::max(worstSpacingPpm, fabs(spacingPpm));
+                if (ms > 2000) worstTrackFrames = std::max(worstTrackFrames, fabs(truePos((double)h) - s));
+                boundaries++;
+            }
+            lastS = s; lastH = h; lastSeed = seed;
+        }
+    }
+    CHECK(boundaries > 20.0 * rate / kZeroTSPeriod * 0.9);
+    CHECK(revised == 0);           // published boundaries are never revised
+    CHECK(gaps == 0);              // consecutive: exactly one period apart
+    CHECK(seedChanges == 0);       // no needless timeline resets
+    CHECK(worstSpacingPpm < 600);  // smooth: each period within the steering limit of the true rate
+    CHECK(worstTrackFrames < 4);   // and still on the device's position
+}
+
 static void testGainTaper() {
     uint8_t g[2];
     mbox_pct_to_gain(0, g);    CHECK(g[0] == 0x00 && g[1] == 0x80);  // muted
@@ -133,7 +177,7 @@ int main(int argc, char** argv) {
     }
     struct { const char* name; void (*run)(); } tests[] = {
         {"sample codec", testSampleCodec}, {"packet round trip", testPacketRoundTrip}, {"clock model", testClockModel},
-        {"gain taper", testGainTaper}, {"mixer addressing", testAddressing},
+        {"zero timestamps for the HAL", testZeroTimeStamps}, {"gain taper", testGainTaper}, {"mixer addressing", testAddressing},
     };
     for (auto& t : tests) {
         int before = gFailures;

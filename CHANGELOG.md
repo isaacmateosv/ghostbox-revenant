@@ -26,6 +26,11 @@ control panel.
 - Documentation: architecture, protocol, logbook, status, install and release guides.
 
 ### Fixed since 1.0.0-rc.1
+- Playback is no longer choppy. The driver revised each zero timestamp as new USB timestamps arrived, so Core Audio
+  re-anchored its IO timeline every few milliseconds ("Sample time is not consecutive") and skipped output: about
+  3 % of the frames at a 384-frame buffer, a third at 128 frames and up to three quarters at 96 kHz (Intel
+  hackintosh, macOS 13). Zero timestamps now follow a timeline that never revises a boundary once published and is
+  steered gently toward the USB clock.
 - Playback no longer turns noisy after a USB stall. When the Mac held back USB completions for longer than the
   input queue (seen while Safari launched), the driver restarted its input stream without counting the skipped
   frames, which moved Core Audio's timeline away from the output stream until playback restarted. Skipped frames
