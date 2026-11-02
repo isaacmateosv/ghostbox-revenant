@@ -86,13 +86,16 @@ void mbox_pct_to_gain(int pct, uint8_t out[2]) { mbox_level_to_gain(pct, out); }
 double mbox_pct_to_db(int pct) { return mbox_level_to_db(pct); }
 int mbox_set_mix(MboxDevice* dev, uint16_t wIndex, uint16_t wValue, int pct) { return mbox_set_mix_level(dev, wIndex, wValue, pct); }
 
+int mbox_set_effect_control(MboxDevice* dev, uint16_t control, int value) {
+    uint8_t b[2] = {(uint8_t)(value & 0xFF), (uint8_t)((value >> 8) & 0xFF)};
+    return setCur(dev, control, MBOX_UNIT_EFFECT, b, control == MBOX_EFFECT_DURATION ? 2 : 1) ? MBOX_ERR_IO : MBOX_OK;
+}
+
 int mbox_set_effect(MboxDevice* dev, int preset, int volume255, int duration65535, int feedback255) {
-    uint8_t p = (uint8_t)preset, vol = (uint8_t)volume255, fb = (uint8_t)feedback255;
-    uint8_t dur[2] = {(uint8_t)(duration65535 & 0xFF), (uint8_t)((duration65535 >> 8) & 0xFF)};
-    int r = setCur(dev, MBOX_EFFECT_PRESET, MBOX_UNIT_EFFECT, &p, 1);
-    r |= setCur(dev, MBOX_EFFECT_VOLUME, MBOX_UNIT_EFFECT, &vol, 1);
-    r |= setCur(dev, MBOX_EFFECT_DURATION, MBOX_UNIT_EFFECT, dur, 2);
-    r |= setCur(dev, MBOX_EFFECT_FEEDBACK, MBOX_UNIT_EFFECT, &fb, 1);
+    int r = mbox_set_effect_control(dev, MBOX_EFFECT_PRESET, preset);
+    r |= mbox_set_effect_control(dev, MBOX_EFFECT_VOLUME, volume255);
+    r |= mbox_set_effect_control(dev, MBOX_EFFECT_DURATION, duration65535);
+    r |= mbox_set_effect_control(dev, MBOX_EFFECT_FEEDBACK, feedback255);
     return r ? MBOX_ERR_IO : MBOX_OK;
 }
 

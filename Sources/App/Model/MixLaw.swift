@@ -22,6 +22,20 @@ struct EffectSettings: Equatable {
     let volume: Int     // 0-255
     let duration: Int   // 0-65535
     let feedback: Int   // 0-255 (delay and echo only)
+
+    enum Control { case preset, volume, duration, feedback }
+
+    /// The controls to send to move the hardware from `written` (nil: unknown, send all) to these settings. Writing
+    /// the preset while audio streams silences the Mbox's playback and monitor outputs until it is replugged, so a
+    /// preset that has not changed is never sent again.
+    func changes(from written: EffectSettings?) -> [(Control, Int)] {
+        let all: [(Control, Int, Int?)] = [(.preset, preset, written?.preset), (.volume, volume, written?.volume),
+                                           (.duration, duration, written?.duration), (.feedback, feedback, written?.feedback)]
+        return all.filter { $0.1 != $0.2 }.map { ($0.0, $0.1) }
+    }
+
+    /// What is known about a Mbox that already holds `preset` and nothing else: every other control gets sent.
+    static func presetOnly(_ preset: Int) -> EffectSettings { EffectSettings(preset: preset, volume: -1, duration: -1, feedback: -1) }
 }
 
 enum MixLaw {
