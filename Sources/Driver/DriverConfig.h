@@ -33,7 +33,9 @@ constexpr UInt32 kMicroframesPerXfer = 8;        // 1 ms per transfer
 // adds no latency, and a schedule that falls behind the bus costs a resync.
 constexpr UInt32 kInXfers = 32, kOutXfers = 16;  // transfers in flight (1 ms each)
 constexpr UInt32 kRingFrames = 16384;            // power of two
-constexpr UInt32 kZeroTSPeriod = 1024;
+// One zero timestamp per lap of the rings, as in Apple's sample drivers. The HAL derives the largest IO buffer it
+// offers from this period: 1024 capped every rate at 384 frames (4 ms at 96 kHz); with 16384 (BlackHole) it is 4096.
+constexpr UInt32 kZeroTSPeriod = kRingFrames;
 constexpr UInt32 kFeedbackSlots = 4096;          // power of two
 
 constexpr Float64 kRates[] = {44100, 48000, 88200, 96000};
