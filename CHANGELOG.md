@@ -28,7 +28,9 @@ control panel.
 ### Fixed since 1.0.0-rc.1
 - Moving an FX send or an effect knob no longer silences the Mbox. The panel re-sent the effect preset with every
   effect change, and the Mbox drops its playback and monitor outputs whenever the preset is written while audio
-  streams, until it is replugged. Effect controls are now sent only when they change.
+  streams, until it is replugged. Effect controls are now sent only when they change, the app keeps the preset of a
+  Mbox that has been up for a while when it starts, and a deliberate change of effect type replugs the Mbox in software
+  (about a second of silence).
 - Playback is no longer choppy. The driver revised each zero timestamp as new USB timestamps arrived, so Core Audio
   re-anchored its IO timeline every few milliseconds ("Sample time is not consecutive") and skipped output: about
   3 % of the frames at a 384-frame buffer, a third at 128 frames and up to three quarters at 96 kHz (Intel

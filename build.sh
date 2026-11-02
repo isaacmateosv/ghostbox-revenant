@@ -203,6 +203,9 @@ build_tools() {
     clang++ $CXXFLAGS Tools/driver_test.cpp -o $B/tools/driver_test -framework CoreAudio -framework CoreFoundation
     clang++ $CXXFLAGS -arch x86_64 Tools/driver_test.cpp -o $B/tools/driver_test_x86 -framework CoreAudio -framework CoreFoundation
     clang++ $CXXFLAGS Tools/stream_test.cpp -o $B/tools/stream_test -framework IOKit -framework CoreFoundation
+    clang++ $CXXFLAGS Tools/halio.cpp -o $B/tools/halio -framework CoreAudio -framework CoreFoundation
+    clang++ $CXXFLAGS Tools/gbharness.cpp -o $B/tools/gbharness -framework CoreAudio -framework CoreFoundation
+    clang++ $CXXFLAGS -Wno-four-char-constants -Wno-multichar Tools/carange.cpp -o $B/tools/carange -framework CoreAudio -framework CoreFoundation
     ok "$B/tools (streaming tests need the Mbox to themselves: quit apps that use it first)"
 }
 

@@ -1,7 +1,7 @@
 # Status
 
 Where version 1.0.0 stands: what is verified and how, what still needs testing, known limitations and what is
-missing. Updated 2026-10-31.
+missing. Updated 2026-11-01 (hackintosh run: [TEST-HACKINTOSH-2026-11-01.md](TEST-HACKINTOSH-2026-11-01.md)).
 
 **Summary:** release candidate. Everything has been built, unit tested and used on one Mac with a real Mbox 3.
 That Mac now runs the published rc.1 package (installed Oct 31: driver loaded, watchdog healthy), but the listening
@@ -43,8 +43,8 @@ macOS 15 and 26 (Apple Silicon and Intel), and it passed on macOS 14 (Apple Sili
 - [ ] **88.2 and 96 kHz** in longer sessions.
 - [ ] **Hot plug** with the restructured driver while a DAW is running.
 - [ ] **Another Apple Silicon Mac** (the owner's M2) and **an Intel hackintosh** (Sonoma, Sequoia, Tahoe).
-- [ ] **macOS 13 Ventura**: built for it, but GitHub no longer offers macOS 13 runners and no Ventura Mac was
-      available.
+- [x] **macOS 13 Ventura** (Intel hackintosh, 13.7.8): driver loads and streams; the choppy playback found there is fixed
+      and verified through coreaudiod at every rate and buffer size (Nov 1).
 - [ ] **Intel Sonoma**: no free GitHub runner; only the hackintosh can cover it.
 - [ ] **Apple Silicon Sonoma**: CI passed there up to rc.1, but GitHub retires its macOS 14 runners on Nov 2, so CI
       no longer runs it; later builds need an Apple Silicon Mac on Sonoma.
