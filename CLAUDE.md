@@ -88,6 +88,14 @@ Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=
   S/PDIF selected but not valid.
 - After Core Audio is killed mid-stream the Mbox can ignore playback until replugged → `mbox3-ctl reenumerate`
   (software replug) fixes it; install script does it automatically.
+- Interface 0 = DFU runtime interface ("Mbox DFU", DFU 1.1, detach timeout 2000 ms): the firmware-update path.
+  **Never send it anything** (a bad firmware write bricks the unit). Interface 2 alt 2 = a 2-channel playback mode
+  (78-byte packets) that Avid's driver never selects: leave it alone. Write only controls Avid's driver writes.
+- Avid's driver at plug-in (Windows USB captures, decoded Nov 2026): SET_INTERFACE 2/3/4 alt 0, then 2/3 alt 1;
+  clock selector 1 + internal rate; every crosspoint and FX send 0x8000 except SWn→Outn 0 dB; LLM register = **2**
+  (we write 0, which works); effect preset 0, duration 0x3fff, feedback 0x3f, volume 0x3f; hold 5; LED dim 0. Its
+  panel then polls Mono/Dim/Tuner every 250 ms. Rate change (idle): SET internal rate, GET valid, GET rate, SET
+  selector 1. The first meter read after power-up returns garbage.
 
 ## Hard-won rules
 - Core Audio owns the sample rate when the driver is installed. Never write the hardware rate from the panel

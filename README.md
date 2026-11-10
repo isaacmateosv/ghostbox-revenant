@@ -72,8 +72,15 @@ took several stages, each with a different set of helpers:
    traffic of Avid's Windows control panel, showed the device speaking standard USB Audio Class 2 requests to
    numbered units. Gemini also used the [REA](https://github.com/morluto/rea) agent toolkit for binary analysis,
    to put names to the units in the captures; most of those first readings were later disproved on the hardware.
-2. **A dead end**: a "codeless kext" telling Apple's audio driver to take the device could not run it, and kernel
-   extensions are a poor fit for current macOS. The work moved to user space.
+   Read again request by request with a purpose-built parser in November 2026 (with Claude), the same captures
+   confirmed every unit and request the finished driver and panel use. They also recorded Avid's own factory setup,
+   and revealed a firmware-update (DFU) interface that GhostBox never touches.
+2. **The kext phase** (with Gemini): a codeless kext, its matching rules taken from the descriptor dumps, made
+   macOS bind a driver to the Mbox for the first time: Apple's own USB audio driver. It could not stream (pipe
+   errors), because a generic class driver never sets up what this device needs first: its clock, its packet
+   layout and its silent default mixer. And while the kernel driver held the audio interfaces, nothing else could
+   reach the device. Those two results set the course for everything after: a dedicated driver that prepares the
+   device itself, runs in user space next to the control panel, and needs no kernel extension on current macOS.
 3. **A user-space prototype** (Gemini): `mbox3-ctl`, an IOKit control tool, and a Python web panel
    recreating Avid's control panel. An early driver that fed audio through a separate daemon never produced sound.
 4. **The register map, confirmed three ways** (with Anthropic Claude): the Linux kernel's Mbox 3 support, the
@@ -89,8 +96,9 @@ took several stages, each with a different set of helpers:
    macOS 15 and 26, Apple Silicon and Intel.
 
 What helped most in the long run: real captures and hardware experiments over guesses, three independent sources
-for every register, and a user-space design that needs no kernel extension. The full story, with the early
-hypotheses next to what turned out to be true, is in [docs/LOGBOOK.md](docs/LOGBOOK.md).
+for every register, and the lesson of the kext phase: a user-space design that needs no kernel extension and never
+locks the control panel out of the device. The full story, with the early hypotheses next to what turned out to
+be true, is in [docs/LOGBOOK.md](docs/LOGBOOK.md).
 
 ## Credits
 

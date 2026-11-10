@@ -12,8 +12,9 @@ the app all share.
 | USB ID | `0dba:5000` (Digidesign) |
 | Speed | USB 2.0 high speed |
 | Class | USB Audio Class 2 descriptors behind **vendor class codes (`0xFF`)**, so macOS's class driver ignores the device |
+| Interface 0 | Firmware update: a DFU 1.1 runtime interface named "Mbox DFU" (detach timeout 2 s, 1024-byte transfers). **Never used**: GhostBox sends it nothing, because a bad firmware write would brick the unit |
 | Interface 1 | Audio control: all the units below |
-| Interface 2 | Playback: alt 1, endpoint `0x01`, isochronous OUT, 4 channels × 24-bit (Software Returns 1-4) |
+| Interface 2 | Playback: alt 1, endpoint `0x01`, isochronous OUT, 4 channels × 24-bit (Software Returns 1-4). Alt 2 declares a 2-channel mode (78-byte packets) that Avid's driver never selects; unused |
 | Interface 3 | Capture: alt 1, endpoint `0x81`, isochronous IN, 4 channels × 24-bit (Input 1, Input 2, S/PDIF L, S/PDIF R) |
 | Interface 4 | Class-compliant USB MIDI: ports **External** (the 5-pin DIN jacks) and **Control** (Avid's control port) |
 | Max packet | 156 bytes (13 frames × 12 bytes, enough for 96 kHz) |
@@ -57,7 +58,7 @@ All controls are class requests to interface 1, with `wIndex = unit << 8 | 1`:
 
 | Register | Meaning | Values |
 |---|---|---|
-| `0x00` | Low Latency Monitoring (a Pro Tools mode) | 0/1. Keep 0: Avid documents inputs muting in this mode. |
+| `0x00` | Low Latency Monitoring (a Pro Tools mode) | 0/1. Keep 0: Avid documents inputs muting in this mode. Avid's driver writes 2 at start-up; that value's meaning is not confirmed. |
 | `0x01` | Mono | 0/1 |
 | `0x02` | Dim | 0/1 |
 | `0x03` | Tuner mode (also: Dim + Mono pressed together) | 0/1 |
@@ -94,6 +95,9 @@ Meter block words: 0-1 Input 1/2, 2-3 S/PDIF in L/R, 4-7 Software Returns 1-4, 8
 | `0x0400` | Duration | 2 bytes LE |
 | `0x0500` | Feedback (Delay and Echo only) | 1 byte |
 
+The descriptors declare it as a USB Audio Class 2 reverberation effect unit: `wValue` is the control selector × 256
+(type `0x02`, level `0x03`, time `0x04`, feedback `0x05`); its enable control is read-only.
+
 ### Clock
 
 | Request | Meaning |
@@ -105,6 +109,25 @@ Meter block words: 0-1 Input 1/2, 2-3 S/PDIF in L/R, 4-7 Software Returns 1-4, 8
 
 The Mbox **powers up on the S/PDIF clock**; without an S/PDIF signal it does not stream. Switching to the internal
 clock fixes that.
+
+## What Avid's own driver sends
+
+From Wireshark/USBPcap captures of Avid's Windows driver and control panel (two fresh plug-ins, then normal use),
+decoded in November 2026:
+
+1. `SET_CONFIGURATION 1`; interfaces 2, 3 and 4 to alt 0, then interfaces 2 and 3 to alt 1.
+2. Clock selector to 1 (internal) and the internal rate, then GET clock valid and GET rate.
+3. Every mixer crosspoint and FX send to `0x8000` (off), except Software Returns 1-4 to Outputs 1-4 at 0 dB.
+4. Low Latency Monitoring register 2, Dim 0, Mono 0.
+5. Effect preset 0, duration `0x3fff`, feedback `0x3f`, volume `0x3f`.
+6. Hold time `0x05` (500 ms), button LEDs off.
+
+Afterwards the panel reads Mono, Dim and Tuner every 250 ms and the meter block while it is shown. A sample-rate
+change (made while idle) is: SET internal rate, GET valid, GET rate, SET clock selector 1. The first meter read
+after power-up returns garbage.
+
+GhostBox writes the same controls with the same request types. Its reads go a little further (all front-panel
+registers, the S/PDIF clock), and it writes 0 rather than 2 to the Low Latency Monitoring register.
 
 ## Tuner
 
