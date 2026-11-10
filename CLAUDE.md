@@ -86,8 +86,15 @@ Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=
   meaningful while the S/PDIF clock is selected.
 - Unit powers up on **S/PDIF clock** (streaming disabled without signal): driver switches to internal if
   S/PDIF selected but not valid.
-- After Core Audio is killed mid-stream the Mbox can ignore playback until replugged → `mbox3-ctl reenumerate`
-  (software replug) fixes it; install script does it automatically.
+- After a host process dies mid-stream the Mbox ignores playback until it is re-enumerated (`mbox3-ctl reenumerate`
+  or a physical replug; a stream restart or the alt-0 pass-through does not clear it). `killall coreaudiod` does not
+  end the driver process ("Core Audio Driver (GhostBoxRevenant.driver)") at once: libxpc keeps it ~5 s after SIGTERM
+  (open transaction), it keeps streaming, then launchd SIGKILLs it. Meanwhile the new driver's interface open fails
+  with kIOReturnExclusiveAccess (0xe00002c5). Hence:
+  - install-driver.sh `restart_core_audio` (also used by postinstall) does TERM, 1 s, KILL on the old process, then
+    the replug;
+  - the driver stops streaming on SIGTERM (a dispatch source; the disposition is not touched);
+  - StartIO retries for up to 7 s while busy.
 - Interface 0 = DFU runtime interface ("Mbox DFU", DFU 1.1, detach timeout 2000 ms): the firmware-update path.
   **Never send it anything** (a bad firmware write bricks the unit). Interface 2 alt 2 = a 2-channel playback mode
   (78-byte packets) that Avid's driver never selects: leave it alone. Write only controls Avid's driver writes.
@@ -100,7 +107,11 @@ Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=
 ## Hard-won rules
 - Core Audio owns the sample rate when the driver is installed. Never write the hardware rate from the panel
   (use Core Audio: `mbox_coreaudio_set_rate`). Never poll hardware rate and push it to Core Audio in internal
-  mode (ping-pong loop). Driver may request config changes only for S/PDIF follow.
+  mode (ping-pong loop). Driver may request config changes only for S/PDIF follow, latency modes, and the IO
+  restart after a re-attach.
+- Never restart the streams underneath a running HAL session (the clock resets to sample 0 and the HAL's IO stalls).
+  When the Mbox returns while apps keep IO open, the driver requests kActionRestartIO: the HAL stops IO, calls
+  PerformDeviceConfigurationChange, and starts IO on a fresh timeline.
 - Never add a driver custom property whose value changes on its own (stats property pinned coreaudiod).
   `'mbxl'` latency mode is OK because it only changes when the user picks a mode.
 - Driver device object is static (always listed); hot-plug only flips DeviceIsAlive. Never announce

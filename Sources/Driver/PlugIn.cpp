@@ -6,7 +6,10 @@
 // Mixer, clock source and front-panel features stay with the GhostBox Revenant GUI app.
 
 #include <CoreAudio/AudioServerPlugIn.h>
+#include <dispatch/dispatch.h>
 #include <mach/mach_time.h>
+#include <signal.h>
+#include <unistd.h>
 
 #include "DriverState.h"
 #include "HardwareClock.h"
@@ -23,6 +26,43 @@ std::atomic<UInt32> gRefCount{1};
 HRESULT QueryInterface(void* self, REFIID iid, LPVOID* out);
 ULONG AddRef(void*) { return ++gRefCount; }
 ULONG Release(void*) { return gRefCount > 0 ? --gRefCount : 0; }
+
+/// Starts the streams for the first IO client (ioMutex held). While another process holds the Mbox's streaming
+/// interfaces (the previous driver process after a Core Audio restart), keeps trying instead of failing the app's IO.
+bool startStreams() {
+    for (UInt32 attempt = 0;; attempt++) {
+        __block bool started = false, busy = false;
+        usb::perform(^{
+            started = stream::start();
+            busy = !started && stream::lastStartBusy();
+        });
+        if (started) {
+            if (attempt) os_log(driverLog(), "the Mbox was free after %u ms", attempt * kStartRetryMs);
+            return true;
+        }
+        if (!busy || attempt >= kStartRetries) return false;
+        if (!attempt) os_log(driverLog(), "another process still holds the Mbox (the previous driver?), waiting for it");
+        usleep(kStartRetryMs * 1000);
+    }
+}
+
+/// launchd sends SIGTERM to this driver process when Core Audio goes away and kills it about 5 s later (an open
+/// XPC transaction keeps it alive meanwhile). Stop streaming at once, cleanly: a process killed mid-stream leaves the
+/// Mbox ignoring playback until it is replugged, and holds the streaming interfaces the next driver needs. The
+/// signal's disposition is not touched; if SIGTERM ends the process right away, this never runs.
+void stopStreamsOnTermination() {
+    static dispatch_source_t source = [] {  // once per process
+        dispatch_source_t s =
+            dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, SIGTERM, 0, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0));
+        dispatch_source_set_event_handler(s, ^{
+            os_log(driverLog(), "the driver process is ending: stopping the streams");
+            usb::perform(^{ stream::stop(); });
+        });
+        dispatch_resume(s);
+        return s;
+    }();
+    (void)source;
+}
 
 void restoreLatencyMode(AudioServerPlugInHostRef host) {
     CFPropertyListRef saved = nullptr;
@@ -52,6 +92,7 @@ OSStatus Initialize(AudioServerPlugInDriverRef, AudioServerPlugInHostRef host) {
     gState.hostTicksPerSecond = 1e9 * tb.denom / tb.numer;
     stream::deviceClock().setHostTicksPerSecond(gState.hostTicksPerSecond);
     usb::start();
+    stopStreamsOnTermination();
     restoreLatencyMode(host);
     gState.hostReady = true;
     os_log(driverLog(), "Mbox 3 driver initialized, device %{public}s, latency mode %u",
@@ -69,6 +110,11 @@ OSStatus RemoveDeviceClient(AudioServerPlugInDriverRef, AudioObjectID, const Aud
 // Runs with IO stopped; the HAL re-reads the device's properties afterwards.
 OSStatus PerformDeviceConfigurationChange(AudioServerPlugInDriverRef, AudioObjectID dev, UInt64 action, void*) {
     if (dev != kObjDevice) return kAudioHardwareBadObjectError;
+    if (action == kActionRestartIO) {
+        // Nothing to change: the HAL stopped IO for this call and starts it again, on a fresh timeline
+        os_log(driverLog(), "restarting IO after the Mbox returned");
+        return noErr;
+    }
     if (action >= kActionLatencyBase && action < kActionLatencyBase + MBOX_LATENCY_MODES) {
         SInt32 mode = (SInt32)(action - kActionLatencyBase);
         gState.latencyMode = (UInt32)mode;
@@ -87,7 +133,15 @@ OSStatus PerformDeviceConfigurationChange(AudioServerPlugInDriverRef, AudioObjec
     os_log(driverLog(), "sample rate set to %.0f", rate);
     return noErr;
 }
-OSStatus AbortDeviceConfigurationChange(AudioServerPlugInDriverRef, AudioObjectID, UInt64, void*) { return noErr; }
+OSStatus AbortDeviceConfigurationChange(AudioServerPlugInDriverRef, AudioObjectID, UInt64 action, void*) {
+    if (action == kActionRestartIO) {
+        // The HAL dropped the IO restart: start the streams directly for the apps that kept IO open
+        pthread_mutex_lock(&gState.ioMutex);
+        if (gState.ioClients > 0) startStreams();
+        pthread_mutex_unlock(&gState.ioMutex);
+    }
+    return noErr;
+}
 
 Boolean HasProperty(AudioServerPlugInDriverRef, AudioObjectID obj, pid_t, const AudioObjectPropertyAddress* a) {
     UInt32 size = 0;
@@ -155,11 +209,7 @@ OSStatus StartIO(AudioServerPlugInDriverRef, AudioObjectID dev, UInt32) {
     if (dev != kObjDevice) return kAudioHardwareBadObjectError;
     pthread_mutex_lock(&gState.ioMutex);
     OSStatus err = noErr;
-    if (gState.ioClients == 0) {
-        __block bool ok = false;
-        usb::perform(^{ ok = stream::start(); });
-        if (!ok) err = kAudioHardwareNotRunningError;
-    }
+    if (gState.ioClients == 0 && !startStreams()) err = kAudioHardwareNotRunningError;
     if (!err) gState.ioClients++;
     pthread_mutex_unlock(&gState.ioMutex);
     return err;

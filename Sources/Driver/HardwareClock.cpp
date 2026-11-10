@@ -40,6 +40,8 @@ void followSpdif(CFRunLoopTimerRef, void*) {
 
 }  // namespace
 
+void requestConfigChange(UInt64 action) { requestConfigChangeAsync(action); }
+
 UInt8 clockSelector() {
     UInt8 c = 0;
     return getCur(MBOX_CLOCK_CTL_SELECTOR, MBOX_UNIT_CLOCK_SELECTOR, &c, 1) == kIOReturnSuccess ? c : 0;

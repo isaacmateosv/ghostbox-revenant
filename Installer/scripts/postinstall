@@ -6,10 +6,9 @@ APP="/Applications/GhostBox Revenant GUI.app"
 chown -R root:wheel "$DRIVER" 2>/dev/null
 rm -rf "/Library/Audio/Plug-Ins/HAL/Mbox3.driver" "/Applications/Mbox 3 Control.app"
 pkgutil --forget local.mbox3.native >/dev/null 2>&1 || true
-killall coreaudiod 2>/dev/null || true
-sleep 2
-# Restarting Core Audio mid-stream can leave the Mbox ignoring playback until it is replugged
-"$APP/Contents/Resources/mbox3-ctl" reenumerate >/dev/null 2>&1 || true
+# Restart Core Audio so it loads the new driver: the previous driver process is stopped first, then the Mbox is
+# replugged in software (restarting Core Audio mid-stream can leave it ignoring playback until it is replugged)
+/bin/sh "$APP/Contents/Resources/install-driver.sh" restart "$APP/Contents/Resources/mbox3-ctl" >/dev/null || true
 # Watch Core Audio for 3 minutes; remove the driver again if it pins the CPU (log: /var/tmp/ghostbox-revenant-driver.log)
 /bin/sh "$APP/Contents/Resources/install-driver.sh" watch-background >/dev/null || true   # errors go to install.log
 CONSOLE_USER=$(stat -f %Su /dev/console)
