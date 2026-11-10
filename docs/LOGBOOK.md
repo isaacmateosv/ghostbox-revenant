@@ -32,13 +32,24 @@ The first step was to see what the hardware says and what Avid's software sends.
   unlocks the hardware. It later turned out to be the driver writing a default state: clock, mixer, effect and
   front-panel settings (see the table below).
 
-## Phase 2: the codeless kext (abandoned)
+## Phase 2: the codeless kext
 
 The first idea was a "codeless kext": an `Info.plist` that tells Apple's own USB audio driver to claim the Mbox
-anyway. It failed. Streams would not start (pipe errors), the kernel driver then held the interfaces exclusively
+anyway, matching it by the IDs and interface numbers read from the descriptor dumps. It failed. Streams would not start (pipe errors), the kernel driver then held the interfaces exclusively
 so nothing else could talk to the device, and the device's quirks (implicit feedback, the S/PDIF power-up clock,
 the silent default mixer) were never going to be handled by a generic driver. Kernel extensions are also
 increasingly hard to install on current macOS, especially on Apple Silicon. The project moved to user space.
+
+It was a turning point, not a detour, and it settled three things:
+
+1. **The descriptors were read correctly.** macOS bound a driver to the Mbox for the first time.
+2. **The device needs setting up before it streams.** Its clock, packet layout and mixer must be prepared first,
+   and no generic class driver does that.
+3. **A kernel driver locks everyone else out.** Once one holds the audio interfaces, every other program is shut
+   out (`kIOReturnExclusiveAccess`).
+
+Each became a design rule of the finished driver: it prepares the device itself, runs in user space, and shares
+the device with the control panel.
 
 ## Phase 3: a user-space control panel (Gemini, up to Oct 27)
 
@@ -122,6 +133,34 @@ installs the package on macOS 14, 15 and 26 (Apple Silicon and Intel) before pub
   was built and published by the release workflow.
 - The credits were checked against the early notes: what Gemini, DeepSeek and the REA toolkit each contributed is
   now recorded in [AUTHORS.md](../AUTHORS.md).
+
+## Phase 10: the Windows captures, decoded in full (Nov 9-10)
+
+The owner's Wireshark captures from Phase 1 were read again, request by request, with a small USBPcap parser. They
+record Avid's Windows driver and control panel through two fresh plug-ins of the Mbox, then fader moves, Dim,
+Mono, the tuner and sample-rate changes.
+
+- **They confirm the finished protocol map.** Every unit, request and register the driver and the panel use
+  appears in Avid's traffic with the same addressing: extension unit `0x20`, mixers `0x40`/`0x42`, effect `0x43`,
+  clocks `0x80`-`0x82`, and the 30-byte meter block.
+- **Avid's factory setup on plug-in**:
+  - Streaming: interfaces 2 and 3 set to the streaming alt setting, and the internal clock selected.
+  - Mixer: every crosspoint and FX send off (`0x8000`) except Software Returns 1-4 to Outputs 1-4 at 0 dB.
+  - Effect: preset 0.
+  - Front panel: hold time 500 ms, button LEDs off, and the Low Latency Monitoring register written as 2.
+    GhostBox writes 0, which works; the difference is noted for testing.
+  - Afterwards, Avid's panel reads Mono, Dim and Tuner every 250 ms.
+- **A firmware-update interface.** Interface 0 is a DFU (Device Firmware Upgrade) interface named "Mbox DFU". It
+  is the way firmware could be rewritten, and the surest way to brick the unit, so GhostBox never sends it
+  anything.
+- **The hardware's limits, as the device itself declares them.** There is one 4-channel capture stream (Input 1,
+  Input 2, S/PDIF L/R) and one 4-channel playback stream. There is no volume or mute unit, and nothing for gain,
+  phantom power, the pad, Soft Limit or the front/rear switches. Interface 2 also declares a 2-channel playback
+  mode that Avid's driver never selects; GhostBox leaves it alone.
+- **What they cannot answer.** They hold no audio streaming and no tuner MIDI, so streaming behaviour still comes
+  from tests on the hardware.
+
+The raw captures are not published: they also record the capturing laptop's other USB devices.
 
 ## Early hypotheses and what turned out to be true
 
