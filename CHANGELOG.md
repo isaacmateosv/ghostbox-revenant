@@ -36,6 +36,10 @@ control panel.
 - Replugging the Mbox while audio plays no longer stalls Core Audio's playback clock. The driver used to restart
   its streams underneath the running session, which reset the clock to zero; it now has Core Audio stop and
   restart audio on a fresh timeline.
+- The Mbox no longer goes silent when the panel connects to it while audio plays (at launch, after a replug or
+  after a USB hiccup). The panel rewrote the clock selector every time, and a clock-selector write, even with the
+  value the Mbox already has, silences a running stream until the Mbox is replugged. The panel now writes it only
+  when it actually changes, which also keeps a sample-rate change in Setup from silencing playback.
 - The driver log now records output-stream errors and input-rate corrections, which used to leave no trace.
 
 ### Fixed since 1.0.0-rc.1

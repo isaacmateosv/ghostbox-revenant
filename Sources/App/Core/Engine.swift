@@ -85,12 +85,14 @@ final class Engine {
         hardware.writeEffect(MixLaw.effect(state.dict("dsp")))
     }
 
-    /// Clock source always; the rate only when the user asked for it (`userRate`) or when no Core Audio driver owns
-    /// it. Pushing a saved rate on startup would switch Core Audio under a running DAW.
+    /// The clock source, and the rate only when the user asked for it (`userRate`) or when no Core Audio driver owns
+    /// it: pushing a saved rate on startup would switch Core Audio under a running DAW. The selector is written only
+    /// when it differs from the hardware's, because rewriting it, even with the value it already has, silences a
+    /// running stream until the Mbox is replugged (measured Nov 10, 2026).
     func applyClock(userRate: Bool) {
         guard hardware.isOpen else { return }
         let spdif = setup.str("clock_source") == "spdif"
-        hardware.setClockSource(spdif: spdif)
+        if hardware.clockStatus()?.spdif != spdif { hardware.setClockSource(spdif: spdif) }
         guard !spdif else { return }
         let rate = Int(setup.num("sample_rate"))
         if driver.isActive {

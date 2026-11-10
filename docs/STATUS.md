@@ -42,9 +42,11 @@ macOS 15 and 26 (Apple Silicon and Intel), and it passed on macOS 14 (Apple Sili
 - [ ] **S/PDIF** input, output and clock following, with a real source.
 - [ ] **88.2 and 96 kHz** in longer sessions.
 - [ ] **Hot plug** with the restructured driver while a DAW is running.
-- [ ] **Installing while audio plays** (the fix for the silence after installing): install a build with the fix
-      while music plays, then check the music comes back on the Mbox without replugging. A software replug while
-      music played already restarted the stream cleanly on Nov 1.
+- [x] **Installing while audio plays** (Nov 10, Apple Silicon, macOS 27): Music pauses itself when Core Audio
+      restarts (macOS does that for every app); pressing play reached the Mbox at once, with no replug. A software
+      replug while music played restarted the stream cleanly too.
+- [ ] **The same on Intel / macOS 13 Ventura**, and the panel connecting while music plays with the clock fix
+      ([TESTING-rc3.md](TESTING-rc3.md)).
 - [ ] **Another Apple Silicon Mac** (the owner's M2) and **an Intel hackintosh** (Sonoma, Sequoia, Tahoe).
 - [ ] **macOS 13 Ventura**: built for it, but GitHub no longer offers macOS 13 runners and no Ventura Mac was
       available.
@@ -60,11 +62,10 @@ macOS 15 and 26 (Apple Silicon and Intel), and it passed on macOS 14 (Apple Sili
   installer once ([INSTALL.md](INSTALL.md)). The release pipeline signs and notarizes automatically once the
   credentials are added ([RELEASING.md](RELEASING.md)).
 - Mixer gains cannot be read back from the hardware: the app restores its saved state whenever the Mbox attaches.
-- Restarting Core Audio while audio is streaming (installing or updating the driver does) can leave the Mbox
-  ignoring playback until it is unplugged and plugged back in, so pause audio before installing (seen on Oct 31).
-  The cause is known: the previous driver process kept streaming for about 5 s after Core Audio went away and was
-  then killed mid-stream, after the installer's software replug. A fix waiting for a hardware test stops that
-  process first, then replugs.
+- Up to rc.2, restarting Core Audio while audio was streaming (installing or updating the driver does) could leave
+  the Mbox ignoring playback until it was unplugged and plugged back in. The panel connecting during playback could
+  too. Both causes are fixed for rc.3: the previous driver process lingering after Core Audio went away, and the
+  panel rewriting the clock selector. Apps still pause when Core Audio restarts (macOS behaviour): press play again.
 - One Mbox at a time.
 - Mixer gain tops out at 0 dB (the hardware reports no range).
 
