@@ -32,7 +32,10 @@ final class FakeMbox: MboxControl {
     func readRegisters() -> MboxRegs? { regs }
     func readMeters() -> [UInt16]? { meters }
     func clockStatus() -> ClockStatus? { clock }
-    func setClockSource(spdif: Bool) { clockSources.append(spdif) }
+    func setClockSource(spdif: Bool) {
+        clockSources.append(spdif)
+        clock = ClockStatus(spdif: spdif, rate: clock.rate, spdifLocked: clock.spdifLocked)
+    }
     func setInternalRate(_ rate: Int) { internalRates.append(rate) }
     func reenumerate() { replugs += 1 }
 
@@ -158,7 +161,7 @@ enum EngineTests {
             expect(rig.mbox.level(.hardware(0), 0) == 100 && rig.mbox.level(.hardware(0), 1) == 100, "saved Input 1 level restored")
             expect(rig.mbox.lastRegister(MBOX_REG_LLM) == 0, "Low Latency Monitoring kept off")
             expect(rig.mbox.lastRegister(MBOX_REG_TUNER) == 0, "tuner off after attach")
-            expect(rig.mbox.clockSources == [false], "internal clock selected")
+            expect(rig.mbox.clockSources.isEmpty, "the clock selector is not rewritten when it already matches")
             expect(rig.mbox.internalRates.isEmpty && rig.driver.rates.isEmpty, "the saved rate is not pushed at startup")
             rig.cleanUp()
         }
@@ -245,6 +248,21 @@ enum EngineTests {
             rig.poll(18)
             expect(rig.engine.setup.num("sample_rate") == 88200, "a rate set from a DAW is followed")
             expect(!rig.engine.store.hasUnsavedChanges, "observed rates are not saved")
+            rig.cleanUp()
+        }
+
+        test("the clock selector is written only when it changes") {
+            let rig = Rig()
+            rig.mbox.clock = ClockStatus(spdif: true, rate: 48000, spdifLocked: false)  // powered up on S/PDIF
+            rig.poll()
+            expect(rig.mbox.clockSources == [false], "attach switches a Mbox on S/PDIF to the saved internal clock")
+            rig.act(["action": "update_setup", "setup": ["sample_rate": 96000] as NSDictionary])
+            expect(rig.mbox.clockSources == [false], "a rate change leaves the selector alone (a rewrite silences the stream)")
+            rig.act(["action": "update_setup", "setup": ["clock_source": "spdif"] as NSDictionary])
+            expect(rig.mbox.clockSources == [false, true], "choosing S/PDIF writes it")
+            rig.mbox.close()
+            rig.poll(18)
+            expect(rig.mbox.clockSources == [false, true], "a re-attach with the selector already right writes nothing")
             rig.cleanUp()
         }
 

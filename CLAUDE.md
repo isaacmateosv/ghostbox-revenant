@@ -111,6 +111,12 @@ Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=
     the replug;
   - the driver stops streaming on SIGTERM (a dispatch source; the disposition is not touched);
   - StartIO retries for up to 7 s while busy.
+  Verified Nov 10 (M4, macOS 27): an install while music played; Music pauses itself on any Core Audio restart
+  (media services reset, macOS behaviour), and pressing play reached the Mbox with no replug.
+- **A clock-selector write (0x8001), even with the value it already has, silences a running stream until the Mbox
+  is re-enumerated** (isolated Nov 10). With music playing, these writes did not silence it: LLM, tuner, mono, dim,
+  LED dim, hold, a crosspoint, an FX send, and a full effect write that included the preset (same value). The app
+  writes the selector only when it differs from the hardware's (Engine.applyClock).
 - Interface 0 = DFU runtime interface ("Mbox DFU", DFU 1.1, detach timeout 2000 ms): the firmware-update path.
   **Never send it anything** (a bad firmware write bricks the unit). Interface 2 alt 2 = a 2-channel playback mode
   (78-byte packets) that Avid's driver never selects: leave it alone. Write only controls Avid's driver writes.
