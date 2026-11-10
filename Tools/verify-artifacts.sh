@@ -49,6 +49,8 @@ exports=$(nm -gU -arch arm64 "$B/GhostBoxRevenant.driver/Contents/MacOS/GhostBox
 
 print "Bundles"
 [[ "$(plist_value "$APP" CFBundleShortVersionString)" == "$VERSION" ]] && pass "app version $VERSION" || fail "app version mismatch"
+RELEASE_VERSION=${GHOSTBOX_RELEASE_VERSION:-$VERSION}  # what the update check compares with GitHub's releases
+[[ "$(plist_value "$APP" GhostBoxReleaseVersion)" == "$RELEASE_VERSION" ]] && pass "app release version $RELEASE_VERSION" || fail "app release version mismatch"
 [[ "$(plist_value "$B/GhostBoxRevenant.driver" CFBundleShortVersionString)" == "$VERSION" ]] && pass "driver version $VERSION" || fail "driver version mismatch"
 [[ "$(plist_value "$APP" LSMinimumSystemVersion)" == "$MINOS" ]] && pass "app LSMinimumSystemVersion $MINOS" || fail "app LSMinimumSystemVersion"
 [[ "$(plist_value "$B/GhostBoxRevenant.driver" LSMinimumSystemVersion)" == "$MINOS" ]] && pass "driver LSMinimumSystemVersion $MINOS" || fail "driver LSMinimumSystemVersion"

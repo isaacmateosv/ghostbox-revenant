@@ -8,6 +8,7 @@ enum MainMenu {
         let main = NSMenu()
         main.addItem(submenu("GhostBox Revenant GUI", [
             item("About GhostBox Revenant GUI", #selector(NSApplication.orderFrontStandardAboutPanel(_:))),
+            item("Check for Updates…", #selector(AppDelegate.checkForUpdates(_:))),
             .separator(),
             item("Settings…", #selector(AppDelegate.showSetup(_:)), ","),
             item("Launch at Login", #selector(AppDelegate.toggleLaunchAtLogin(_:))),

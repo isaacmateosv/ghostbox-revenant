@@ -17,6 +17,9 @@
 //   POST /api/open-ams         open Audio MIDI Setup
 //   POST /api/reveal-data      show the settings folder in Finder
 //   POST /api/install-driver   install the bundled driver (macOS password prompt); progress in info.driver_job
+//   POST /api/check-updates    look for a newer release on GitHub now; result in info.update
+//   POST /api/download-update  download the offered package, verify it and open it in Installer (info.update)
+//   POST /api/reveal-update    show the downloaded package in Finder
 
 import AppKit
 import Foundation
@@ -25,11 +28,13 @@ final class APIRouter {
     private let engine: Engine
     private let uiDirectory: URL
     private let midi: MidiMonitor
+    private let updates: UpdateChecker
 
-    init(engine: Engine, uiDirectory: URL, midi: MidiMonitor) {
+    init(engine: Engine, uiDirectory: URL, midi: MidiMonitor, updates: UpdateChecker) {
         self.engine = engine
         self.uiDirectory = uiDirectory.standardizedFileURL
         self.midi = midi
+        self.updates = updates
     }
 
     func handle(_ r: HTTPRequest) -> HTTPResponse {
@@ -90,6 +95,17 @@ final class APIRouter {
         case ("POST", "/api/reveal-data"):
             let dir = engine.store.directory
             DispatchQueue.main.async { NSWorkspace.shared.activateFileViewerSelecting([dir]) }
+            return .json(["ok": true])
+        case ("POST", "/api/check-updates"):
+            updates.check(force: true)
+            return .json(["ok": true, "started": true])
+        case ("POST", "/api/download-update"):
+            updates.download()
+            return .json(["ok": true, "started": true])
+        case ("POST", "/api/reveal-update"):
+            guard let path = engine.perform({ engine.updateInfo["file"] as? String }) else { return .error(404, "nothing downloaded") }
+            let file = URL(fileURLWithPath: path)
+            DispatchQueue.main.async { NSWorkspace.shared.activateFileViewerSelecting([file]) }
             return .json(["ok": true])
         case (_, let path) where path.hasPrefix("/api/"):
             return .error(r.method == "GET" || r.method == "POST" ? 404 : 405, "not found")

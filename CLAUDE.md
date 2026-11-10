@@ -21,11 +21,13 @@ first when it exists, and keep its Status section current before stopping.
   `DriverState.h` (shared atomics). Built with -fvisibility=hidden: exports only Mbox3_Create + test hooks.
   Runs in "Core Audio Driver (GhostBoxRevenant.driver)"; installed at `/Library/Audio/Plug-Ins/HAL/GhostBoxRevenant.driver`.
 - `Sources/App/` Swift app "GhostBox Revenant GUI", layered:
-  `Model/` (pure, unit tested: StateTree, PanelState incl. migration, MixLaw, Meters, Tuner),
+  `Model/` (pure, unit tested: StateTree, PanelState incl. migration, MixLaw, Meters, Tuner, Releases: SemVer + the
+  update decision),
   `Hardware/` (Interfaces.swift: MboxControl + AudioDriverControl protocols the engine depends on; MboxHardware:
   MboxKit wrapper that writes only changed gains; CoreAudioDriver: HAL client),
   `Core/` (Engine: state owner, poll, sync, revision counter; EngineActions: the /api/state actions),
-  `Services/` (StateStore, MidiMonitor, MultiButton, Diagnostics, DriverInstaller), `Server/` (HTTPServer transport,
+  `Services/` (StateStore, MidiMonitor, MultiButton, Diagnostics, DriverInstaller, UpdateChecker: GitHub releases,
+  SHA256SUMS-verified download opened in Installer, transport behind a protocol), `Server/` (HTTPServer transport,
   APIRouter: routes + security), `Shell/` (AppDelegate composition root, MainWindowController, MainMenu,
   StatusMenuController, main.swift).
 - `Sources/UI/` the panel: `index.html`, `css/` (tokens, base, console, controls, panels, layouts),
@@ -51,15 +53,20 @@ first when it exists, and keep its Status section current before stopping.
 
 ## API contract (Sources/App/Server/APIRouter.swift)
 GET /api/state → {state, rev, info{app_version, driver_version, driver_latency|null, spdif_locked, data_dir,
-multi_actions}}; GET /api/meters (also carries `rev`; the panel refetches state when rev advances);
+multi_actions, update{state idle|checking|current|available|downloading|ready|error, current, latest, prerelease,
+page, notes, published, size, checked_at, file, message, error, id}}}; GET /api/meters (also carries `rev`; the
+panel refetches state when rev advances);
 POST /api/install-driver (async; progress in info.driver_job {state,message,id}, info.bundled_driver_version);
+POST /api/check-updates, /api/download-update (async; info.update), /api/reveal-update;
 POST /api/state {action,...} (EngineActions: update_channel(+sibling_val), update_channel_pair, update_links,
 update_fx_sends, update_fx_ret, update_dsp, update_master, switch_bus, copy_mix, clear_solos, set_layout,
 update_ui{fit,tools_open,tools_tab}, toggle_global, set_global{feature,on}, set_tuner, update_setup,
-update_multi_cfg, midi_learn, midi_forget, reset_defaults); POST /api/presets/save|load|delete, /api/init,
+set_advanced{settings{update_check, update_prereleases auto|on|off}}, update_multi_cfg, midi_learn, midi_forget,
+reset_defaults); POST /api/presets/save|load|delete, /api/init,
 /api/reenumerate, /api/open-ams, /api/reveal-data. Security: Host must be 127.0.0.1/localhost, Origin (if any)
 must equal http://<Host>, POST needs Content-Type application/json, state changes are POST only.
-Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=Sources/UI` (live panel edits).
+Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=Sources/UI` (live panel edits),
+`GHOSTBOX_NO_DEVICE=1` (keeps a dev copy off the Mbox: on attach a dev copy pushes its own saved mix, effect included).
 
 ## Hardware facts (verified)
 - UAC2 descriptors under vendor class 255, so Apple's driver ignores it. High speed.
@@ -101,6 +108,9 @@ Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=
 - StateTree helpers convert immutable containers to mutable copies (never drop them): Swift values stored in the
   tree are immutable.
 - Toggles from the panel use explicit-value actions (set_global, set_tuner) because the ActionQueue coalesces.
+- App-side options (Setup > Advanced, state.advanced) go through `set_advanced`, never `update_setup`: update_setup
+  rewrites the panel registers and the effect, and an effect write while audio streams can silence the Mbox.
+  New "advanced" features are opt-in, harmless to the Mbox and the Mac, and live in that section.
 - Don't run Tools/driver_test or stream_test while the installed driver is streaming (exclusive access).
 - Installing the driver needs the user's password; use `--watch` style watchdog (auto-remove if coreaudiod > 80%).
   In the background it runs as a one-shot daemon bootstrapped into launchd's **system** domain (plist in a private
@@ -112,7 +122,9 @@ Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=
 universal arm64+x86_64, min macOS 13, ad-hoc signed. Outputs in `build/`: `mbox3-ctl`, `GhostBoxRevenant.driver`,
 `GhostBox Revenant GUI.app` (Resources: UI/, mbox3-ctl, AppIcon.icns, copy of GhostBoxRevenant.driver),
 `GhostBoxRevenant-<VERSION>.pkg` (postinstall: killall coreaudiod + reenumerate + open app; bundles non-relocatable),
-`GhostBoxRevenant-<VERSION>.dmg` (pkg + Read Me + License + Uninstall command). Version in `VERSION`.
+`GhostBoxRevenant-<VERSION>.dmg` (pkg + Read Me + License + Uninstall command). Version in `VERSION`;
+`GHOSTBOX_RELEASE_VERSION` (the release workflow passes the tag's version, must start with VERSION) becomes the app's
+Info.plist `GhostBoxReleaseVersion`, which the app reports and the update check compares with GitHub's releases.
 `./build.sh dist` = dmg + Tools/verify-artifacts.sh (writes build/dist with SHA256SUMS.txt). Signing: ad-hoc unless
 GHOSTBOX_SIGN_IDENTITY / GHOSTBOX_INSTALLER_IDENTITY are set. Publishing rules: never commit Avid material (binaries,
 manual, decompiled code), third-party closed-source products or copied kernel code; .gitignore enforces it.

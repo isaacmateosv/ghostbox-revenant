@@ -62,10 +62,10 @@ Swift, layered so each layer only depends on the ones below it:
 
 | Layer | Contents |
 |---|---|
-| `Model/` | Pure logic, unit tested: the state tree, defaults and migrations (`PanelState`), the mixer law (`MixLaw`), meter ballistics, tuner decoding |
+| `Model/` | Pure logic, unit tested: the state tree, defaults and migrations (`PanelState`), the mixer law (`MixLaw`), meter ballistics, tuner decoding, release versions and the update decision (`Releases`) |
 | `Hardware/` | `Interfaces.swift` (the protocols the engine depends on), `MboxHardware` (MboxKit wrapper that writes only gains that changed), `CoreAudioDriver` (HAL client: driver presence, rate, latency mode) |
 | `Core/` | `Engine`: owns the state, polls the hardware, syncs it, counts revisions; `EngineActions`: what the panel can ask for |
-| `Services/` | Persistence and presets, the MIDI monitor, the Multi button, diagnostics, the in-app driver installer |
+| `Services/` | Persistence and presets, the MIDI monitor, the Multi button, diagnostics, the in-app driver installer, the update check (`UpdateChecker`: GitHub releases, verified downloads; its network side sits behind a protocol so tests use a fake) |
 | `Server/` | A minimal HTTP/1.1 server on 127.0.0.1 and the API router (routes, static files, security checks) |
 | `Shell/` | `AppDelegate` (composition root), the window, the menus, the menu bar item |
 

@@ -36,6 +36,15 @@ control panel.
   inputs straight to the Mac) and what you hear (the hardware mixer), with three short notes on what that means
   in practice, and it takes its colours from the panel's theme.
 
+### Added since 1.0.0-rc.2
+- Update check: once a day the app looks for a newer release on GitHub and offers it in a banner. **Download &
+  Install…** fetches the package, checks it against the release's `SHA256SUMS.txt` and opens it in Installer
+  (nothing installs silently). Also in About (Check for Updates) and the app menu. A new **Setup > Advanced** section
+  turns the daily check off and chooses whether release candidates are offered (by default only while you run one);
+  options there are app-side and never write to the Mbox. The app now reports its full release version (for
+  example 1.0.0-rc.3).
+- `GHOSTBOX_NO_DEVICE=1` keeps a development copy of the app off the Mbox.
+
 ### Notes
 - Not affiliated with Avid. Licensed under GPL-3.0-or-later.
 - Pre-release builds were called "Mbox 3 Control": the installer removes them, the app copies their settings, and

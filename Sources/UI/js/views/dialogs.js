@@ -33,6 +33,13 @@ export function createDialogs(ctx) {
         ctx.render();
     }
 
+    /** Setup > Advanced: app-side options, posted on their own so they never touch the Mbox. */
+    function postAdvanced(patch) {
+        store.S.advanced = { ...(store.S.advanced || {}), ...patch };
+        ctx.post('set_advanced', { settings: patch }, 'advanced:' + Object.keys(patch).join(','));
+        renderSetup();
+    }
+
     function segmented(options, current, onPick, disabled = false) {
         return h('div', { class: 'segmented' }, ...options.map(([value, label]) =>
             h('button', { class: value === current ? 'on' : '', disabled, onclick: () => onPick(value) }, label)));
@@ -43,7 +50,8 @@ export function createDialogs(ctx) {
     }
 
     function renderSetup() {
-        const S = store.S, info = store.info, s = S.setup;
+        const S = store.S, info = store.info, s = S.setup, a = S.advanced || {};
+        const releaseCandidate = String(info.app_version || '').includes('-');
         const spdif = s.clock_source === 'spdif';
         const latencySupported = !!info.driver_latency;
         const latency = LATENCY.find(l => l[0] === s.latency_mode) || LATENCY[0];
@@ -79,14 +87,38 @@ export function createDialogs(ctx) {
                     ...field('Options', h('div', { class: 'checks' },
                         check('hold_clip_indicators', 'Hold clip indicators until clicked'),
                         check('load_latency_clock', 'Presets also load clock, rate and latency'))))),
+            h('div', { class: 'section' },
+                h('div', { class: 'section-title' }, 'Advanced'),
+                h('div', { class: 'field' },
+                    ...field('Updates', h('label', {}, h('input', { type: 'checkbox', checked: a.update_check !== false,
+                        onchange: e => postAdvanced({ update_check: e.target.checked }) }), ' ', 'Check GitHub for a new version once a day'),
+                        "Contacts only github.com (this project's releases); nothing about you or your Mbox is sent. About > Check for Updates works either way."),
+                    ...field('Release candidates', segmented([['auto', 'Automatic'], ['on', 'Offer'], ['off', "Don't offer"]],
+                        a.update_prereleases || 'auto', v => postAdvanced({ update_prereleases: v })),
+                        `Test builds published before a release. Automatic offers them while you run one${releaseCandidate ? ' (this app is one)' : ''}.`))),
             h('p', { class: 'dim', style: 'font-size:10px; margin-top:8px' },
                 'Low Latency Monitoring stays off: it is a Pro Tools mode that Avid documents as muting the inputs. Use the mixer for zero-latency monitoring.'));
     }
 
     // MARK: about and flow
 
+    /** One line for About: what the last update check found (Services/UpdateChecker.swift). */
+    function updateStatus(u) {
+        if (u.error && u.message) return u.message;
+        const checked = u.checked_at ? ` · checked ${new Date(u.checked_at * 1000).toLocaleString()}` : '';
+        switch (u.state) {
+            case 'checking': return 'Checking GitHub…';
+            case 'available': return `${u.latest}${u.prerelease ? ' (release candidate)' : ''} is available${checked}`;
+            case 'downloading': return `Downloading ${u.latest}…`;
+            case 'ready': return `${u.latest} downloaded and open in Installer`;
+            case 'current': return `Up to date${checked}`;
+            default: return 'Not checked yet';
+        }
+    }
+
     function renderAbout() {
-        const S = store.S, info = store.info;
+        const S = store.S, info = store.info, u = info.update || {};
+        const busy = u.state === 'checking' || u.state === 'downloading';
         const row = (k, v) => [h('dt', {}, k), h('dd', {}, v)];
         $('#aboutBody').replaceChildren(
             h('div', { class: 'about-hero' },
@@ -98,7 +130,14 @@ export function createDialogs(ctx) {
                 ...row('Core Audio driver', info.driver_version ? `${info.driver_version}${info.driver_latency ? '' : ' (no latency modes)'}` : 'not installed'),
                 ...row('Bundled driver', info.bundled_driver_version || '-'),
                 ...row('Firmware', S.firmware || '-'),
-                ...row('Settings folder', info.data_dir || '-'))),
+                ...row('Settings folder', info.data_dir || '-'),
+                ...row('Updates', updateStatus(u)))),
+            h('div', { class: 'row', style: 'margin-top:12px' },
+                h('button', { dataset: { action: 'checkUpdates' }, disabled: busy, title: "Look for a newer release on this project's GitHub page" },
+                    'Check for Updates'),
+                u.state === 'available' ? h('button', { class: 'primary', dataset: { action: 'downloadUpdate' } }, 'Download & Install…') : null,
+                u.state === 'ready' ? h('button', { dataset: { action: 'revealUpdate' } }, 'Show in Finder') : null,
+                u.page ? h('button', { dataset: { action: 'updateNotes' } }, 'Release Notes') : null),
             h('div', { class: 'row', style: 'margin-top:12px' },
                 h('button', { onclick: () => api.revealData() }, 'Show Settings Folder'),
                 h('button', { onclick: () => api.openAudioMidiSetup() }, 'Open Audio MIDI Setup'),

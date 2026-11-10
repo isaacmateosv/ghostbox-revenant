@@ -33,6 +33,16 @@ the one installed, click
 **Update Driver…** in its banner (About > **Reinstall Driver…** repairs an install). Your mixes and presets are
 kept.
 
+The app looks for new releases by itself: once a day it asks GitHub for this project's releases and, when there is a
+newer version, shows a banner. **Download & Install…** downloads the package, checks it against the release's
+`SHA256SUMS.txt` and opens it in Installer; nothing is installed until you go through Installer. Settings are in
+**Setup > Advanced**:
+
+- **Check GitHub for a new version once a day** (on by default). **About > Check for Updates** checks at any time.
+- **Release candidates**: *Automatic* offers test builds only while you run one, *Offer* always, *Don't offer* never.
+
+![Setup > Advanced](images/update-advanced.png)
+
 ## Hackintosh notes (OpenCore)
 
 - The same package works on Intel hackintoshes; the app and the driver are universal.
