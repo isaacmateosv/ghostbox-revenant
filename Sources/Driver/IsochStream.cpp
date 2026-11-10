@@ -55,6 +55,11 @@ double gFbAccum = 0;
 // Rate watch window
 UInt64 gRateWinStart = 0, gRateWinFrames = 0, gLastRateFix = 0;
 
+// Why the last start failed: kIOReturnExclusiveAccess means another process (a previous driver) holds the interfaces
+IOReturn gOpenError = kIOReturnSuccess;
+std::atomic<bool> gStartBusy{false};
+UInt64 gLastOutFailureLog = 0;
+
 ClockModel gClock;
 
 // Statistics
@@ -86,6 +91,8 @@ void watchRate(UInt64 frames) {
     gRateWinStart = now; gRateWinFrames = 0;
     if (fabs(measured / gState.sampleRate.load() - 1.0) < 0.02 || (double)(now - gLastRateFix) < 3 * gState.hostTicksPerSecond) return;
     gLastRateFix = now;
+    os_log(driverLog(), "input ran at %.0f Hz instead of %.0f for a second: checking the rate, re-anchoring the clock",
+           measured, gState.sampleRate.load());
     usb::performAsync(^{
         hw::enforce(false);
         gClock.invalidate();  // re-anchor
@@ -128,13 +135,24 @@ void inputDone(Xfer* x) {
     pumpOut();
 }
 
+// OUT problems used to leave no trace: log them, at most once a second (they can repeat every millisecond).
+void logOutFailure(const char* what, IOReturn kr) {
+    UInt64 now = mach_absolute_time();
+    if (gLastOutFailureLog && (double)(now - gLastOutFailureLog) < gState.hostTicksPerSecond) return;
+    gLastOutFailureLog = now;
+    os_log_error(driverLog(), "%{public}s: 0x%x", what, kr);
+}
+
 void xferDone(void* refcon, IOReturn result, void*) {
     Xfer* x = (Xfer*)refcon;
     gPendingXfers--;
     if (!x->in) x->busy = false;
     if (!gStreaming) return;
     (x->in ? gInDone : gOutDone)++;
-    if (result != kIOReturnSuccess) { gLastStatus = result; if (!x->in) gOutErrors++; }
+    if (result != kIOReturnSuccess) {
+        gLastStatus = result;
+        if (!x->in) { gOutErrors++; logOutFailure("out transfer ended with an error", result); }
+    }
     if (x->in) inputDone(x);
     else pumpOut();  // OUT completions also top up the queue
 }
@@ -214,7 +232,11 @@ void pumpOut() {
         gNextOutFrame += kMicroframesPerXfer / 8;
         int bucket = std::clamp((int)(x->frame - cur), 0, 7);
         if (kr == kIOReturnSuccess) { x->busy = true; gPendingXfers++; gLeadHist[bucket]++; gLastOutQueuedFrame = x->frame; }
-        else { gSubmitErrors++; gLastStatus = kr; gOutSynced = false; gLeadHist[8 + bucket]++; break; }
+        else {
+            gSubmitErrors++; gLastStatus = kr; gOutSynced = false; gLeadHist[8 + bucket]++;
+            logOutFailure("submit out failed, resyncing", kr);
+            break;
+        }
     }
 }
 
@@ -247,7 +269,9 @@ USBIntf** openInterface(UInt8 number, UInt8 alt, UInt8 endpoint, UInt8* pipeOut)
     if (kr == kIOReturnSuccess) (*intf)->SetAlternateInterface(intf, 0);
     if (kr == kIOReturnSuccess) kr = (*intf)->SetAlternateInterface(intf, alt);
     if (kr != kIOReturnSuccess) {
-        os_log_error(driverLog(), "open interface %d alt %d failed: 0x%x", number, alt, kr);
+        gOpenError = kr;
+        if (kr == kIOReturnExclusiveAccess) os_log_debug(driverLog(), "interface %d is held by another process", number);  // StartIO waits
+        else os_log_error(driverLog(), "open interface %d alt %d failed: 0x%x", number, alt, kr);
         (*intf)->USBInterfaceClose(intf);
         (*intf)->Release(intf);
         return nullptr;
@@ -321,13 +345,21 @@ void stop() {
     os_log(driverLog(), "streaming stopped");
 }
 
+bool lastStartBusy() { return gStartBusy; }
+
 bool start() {
+    gStartBusy = false;
     if (!usb::device()) return false;
     if (gStreaming) return true;
     usb::setRealtimePriority();
+    gOpenError = kIOReturnSuccess;
     gInIntf = openInterface(MBOX_IF_CAPTURE, MBOX_ALT_STREAMING, MBOX_EP_CAPTURE, &gInPipe);
     gOutIntf = openInterface(MBOX_IF_PLAYBACK, MBOX_ALT_STREAMING, MBOX_EP_PLAYBACK, &gOutPipe);
-    if (!gInIntf || !gOutIntf || !gInPipe || !gOutPipe) { stop(); return false; }
+    if (!gInIntf || !gOutIntf || !gInPipe || !gOutPipe) {
+        gStartBusy = gOpenError == kIOReturnExclusiveAccess;
+        stop();
+        return false;
+    }
     allocXfers(gInIntf, gIn, kInXfers, true);
     allocXfers(gOutIntf, gOut, kOutXfers, false);
 

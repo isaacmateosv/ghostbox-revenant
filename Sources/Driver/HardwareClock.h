@@ -22,4 +22,8 @@ void enforce(bool adoptRate);
 // Once a second: notice the S/PDIF clock and ask Core Audio to follow the source's rate.
 void startFollowingSpdif();
 
+// Asks Core Audio for a configuration change (a sample rate, a latency mode or kActionRestartIO) from another queue:
+// the host must not be called from the USB thread, which PerformDeviceConfigurationChange waits on.
+void requestConfigChange(UInt64 action);
+
 }  // namespace mbox::hw

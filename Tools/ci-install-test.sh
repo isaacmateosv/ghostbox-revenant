@@ -40,6 +40,19 @@ latency=$("$CTL" latency 2>&1)
 [[ "$latency" == *'"latency":"safe"'* ]] && pass "driver answers through Core Audio: $latency" \
     || note "latency property not readable without the Mbox attached ($latency)"
 
+print "Reinstall over a running driver"
+old=$(pgrep -f "Core Audio Driver \(GhostBoxRevenant.driver\)" | head -1)
+sudo /bin/sh "$APP/Contents/Resources/install-driver.sh" install "$APP/Contents/Resources/GhostBoxRevenant.driver" >/dev/null
+[[ -n "$old" ]] && ! ps -p "$old" >/dev/null && pass "the previous driver process ($old) was stopped" \
+    || fail "the previous driver process (${old:-none}) is still running"
+new=""
+for i in {1..30}; do
+    new=$(pgrep -f "Core Audio Driver \(GhostBoxRevenant.driver\)" | head -1)
+    [[ -n "$new" && "$new" != "$old" ]] && break
+    sleep 1
+done
+[[ -n "$new" && "$new" != "$old" ]] && pass "Core Audio loaded the driver again (process $new)" || fail "no driver process after the reinstall"
+
 print "Watchdog"
 WATCH_LABEL=ghostbox-revenant.driver-watchdog
 if sudo launchctl print system/$WATCH_LABEL >/dev/null 2>&1; then

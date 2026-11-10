@@ -16,6 +16,9 @@ namespace mbox::stream {
 // USB thread only.
 bool start();
 void stop();
+// The last start() failed because another process holds the streaming interfaces (kIOReturnExclusiveAccess): after
+// a Core Audio restart, the previous driver process keeps them until it exits.
+bool lastStartBusy();
 
 // HAL IO thread: copy `frames` frames at device time `start`. Return the frames that were not there (input:
 // not captured yet or overwritten, so silence; output: already sent, so lost).

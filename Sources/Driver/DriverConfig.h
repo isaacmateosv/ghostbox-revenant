@@ -53,7 +53,11 @@ struct LatencyProfile { UInt32 inSafetyMs, outLeadMs, outMarginMs; };
 constexpr LatencyProfile kLatencyProfiles[MBOX_LATENCY_MODES] = {{10, 10, 3}, {6, 7, 2}, {4, 5, 1}};  // safe, balanced, low
 constexpr AudioObjectPropertySelector kLatencySelector = MBOX_LATENCY_SELECTOR;
 constexpr UInt64 kActionLatencyBase = 0x4C00;  // config-change actions below any sample rate select a latency mode
+constexpr UInt64 kActionRestartIO = 0x4B00;    // config-change action that only makes the HAL stop and restart IO
 constexpr const char* kLatencyStorageKey = "latency_mode";
+// StartIO keeps trying while another process holds the streaming interfaces: after a Core Audio restart the previous
+// driver process can keep them until launchd ends it, about 5 s after Core Audio went away.
+constexpr UInt32 kStartRetryMs = 200, kStartRetries = 35;
 
 constexpr const char* kInNames[kChannels] = {"Input 1", "Input 2", "S/PDIF L", "S/PDIF R"};
 constexpr const char* kOutNames[kChannels] = {"Software Return 1", "Software Return 2", "Software Return 3", "Software Return 4"};

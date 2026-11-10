@@ -43,6 +43,9 @@ macOS 15 and 26 (Apple Silicon and Intel), and it passed on macOS 14 (Apple Sili
 - [ ] **S/PDIF** input, output and clock following, with a real source.
 - [ ] **88.2 and 96 kHz** in longer sessions.
 - [ ] **Hot plug** with the restructured driver while a DAW is running.
+- [ ] **Installing while audio plays** (the fix for the silence after installing): install a build with the fix
+      while music plays, then check the music comes back on the Mbox without replugging. A software replug while
+      music played already restarted the stream cleanly on Nov 1.
 - [ ] **Another Apple Silicon Mac** (the owner's M2) and **an Intel hackintosh** (Sonoma, Sequoia, Tahoe).
 - [x] **macOS 13 Ventura** (Intel hackintosh, 13.7.8): driver loads and streams; the choppy playback found there is fixed
       and verified through coreaudiod at every rate and buffer size (Nov 1).
@@ -59,8 +62,10 @@ macOS 15 and 26 (Apple Silicon and Intel), and it passed on macOS 14 (Apple Sili
   credentials are added ([RELEASING.md](RELEASING.md)).
 - Mixer gains cannot be read back from the hardware: the app restores its saved state whenever the Mbox attaches.
 - Restarting Core Audio while audio is streaming (installing or updating the driver does) can leave the Mbox
-  ignoring playback until it is unplugged and plugged back in. A software reset (*Reset USB Connection*) while
-  audio keeps playing does not clear it, so pause audio before installing (seen on Oct 31; a fix is planned).
+  ignoring playback until it is unplugged and plugged back in, so pause audio before installing (seen on Oct 31).
+  The cause is known: the previous driver process kept streaming for about 5 s after Core Audio went away and was
+  then killed mid-stream, after the installer's software replug. A fix waiting for a hardware test stops that
+  process first, then replugs.
 - One Mbox at a time.
 - Mixer gain tops out at 0 dB (the hardware reports no range).
 

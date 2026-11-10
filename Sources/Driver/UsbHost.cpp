@@ -45,7 +45,10 @@ void deviceAttached(void*, io_iterator_t it) {
         hw::enforce(!gState.hostReady);
         gState.devicePresent = true;
         os_log(driverLog(), "Mbox 3 attached (%.0f Hz)", gState.sampleRate.load());
-        if (gState.ioClients > 0) stream::start();  // apps kept IO open across an unplug
+        // Apps kept IO open across the unplug: have the HAL stop and restart IO (a configuration change) so its
+        // timeline restarts with ours. Restarting the streams here reset the clock to sample 0 under a running
+        // session, which can stall the HAL's IO.
+        if (gState.ioClients > 0) hw::requestConfigChange(kActionRestartIO);
         model::notifyDeviceAliveChanged();
     }
 }

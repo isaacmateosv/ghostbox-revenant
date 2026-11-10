@@ -25,6 +25,19 @@ control panel.
   and 26, Apple Silicon and Intel.
 - Documentation: architecture, protocol, logbook, status, install and release guides.
 
+### Fixed since 1.0.0-rc.2
+- Installing or updating while audio plays no longer leaves the Mbox silent. Core Audio runs the driver in a
+  process of its own, which lingered for about 5 s after the installer restarted Core Audio, kept streaming, and
+  was then killed mid-stream, after the installer's software replug. That left the Mbox ignoring playback until it
+  was unplugged, and kept the new driver from opening the Mbox, so the app's audio failed to start. Now:
+  - the installers stop the old driver process before the software replug;
+  - the driver stops streaming cleanly as soon as its process is told to end;
+  - starting audio waits up to 7 s for the Mbox instead of failing when another process still holds it.
+- Replugging the Mbox while audio plays no longer stalls Core Audio's playback clock. The driver used to restart
+  its streams underneath the running session, which reset the clock to zero; it now has Core Audio stop and
+  restart audio on a fresh timeline.
+- The driver log now records output-stream errors and input-rate corrections, which used to leave no trace.
+
 ### Fixed since 1.0.0-rc.1
 - Moving an FX send or an effect knob no longer silences the Mbox. The panel re-sent the effect preset with every
   effect change, and the Mbox drops its playback and monitor outputs whenever the preset is written while audio

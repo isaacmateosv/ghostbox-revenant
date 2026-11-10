@@ -3,12 +3,14 @@
 # GUI's "Install Driver…" (through the macOS password prompt), from the package, and from ./build.sh install-driver.
 #
 #   install-driver.sh install <path/to/GhostBoxRevenant.driver> [--watch | --watch-background]
+#   install-driver.sh restart [path/to/mbox3-ctl]     (the package's postinstall)
 #   install-driver.sh watch | watch-background
 #   install-driver.sh uninstall
 #
-# Installing restarts Core Audio and replugs the Mbox in software (restarting Core Audio mid-stream can leave the
-# Mbox ignoring playback until it is replugged). The watchdog then watches coreaudiod for 3 minutes and removes
-# the driver again if Core Audio pins the CPU, so the Mac's audio always comes back. Log: /var/tmp/ghostbox-revenant-driver.log
+# Installing restarts Core Audio, stopping the previous driver process first, and replugs the Mbox in software
+# (restarting Core Audio mid-stream can leave the Mbox ignoring playback until it is replugged). The watchdog then
+# watches coreaudiod for 3 minutes and removes the driver again if Core Audio pins the CPU, so the Mac's audio
+# always comes back. Log: /var/tmp/ghostbox-revenant-driver.log
 #
 # In the background the watchdog runs as a one-shot launchd daemon in the system domain. A background process
 # does not survive (the package installer and the password prompt's shell end what a script leaves behind), and
@@ -24,6 +26,34 @@ SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"   # launchd needs an abso
 
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*" | tee -a "$LOG"; }
 
+# Core Audio runs each driver in a process of its own ("Core Audio Driver (GhostBoxRevenant.driver)"). When
+# coreaudiod is killed, that process lingers for about 5 s and keeps streaming until launchd kills it. Meanwhile the
+# new driver cannot open the Mbox, and a process killed mid-stream leaves the Mbox ignoring playback until it is
+# replugged. So the old driver process is asked to stop first (this driver stops streaming on SIGTERM; older ones
+# ignore it), then killed, and only then is the Mbox replugged.
+driver_processes() { pgrep -f 'Core Audio Driver \((GhostBoxRevenant|Mbox3)\.driver\)' | tr '\n' ' '; }
+
+restart_core_audio() {  # $1: the mbox3-ctl that replugs the Mbox afterwards (optional)
+    old=$(driver_processes)
+    killall coreaudiod 2>/dev/null
+    if [ -n "$old" ]; then
+        kill -TERM $old 2>/dev/null
+        sleep 1
+        kill -KILL $old 2>/dev/null
+        i=0
+        while [ "$i" -lt 10 ]; do
+            alive=""
+            for p in $old; do kill -0 "$p" 2>/dev/null && alive="$alive $p"; done
+            [ -z "$alive" ] && break
+            sleep 0.2
+            i=$((i + 1))
+        done
+        if [ -n "$alive" ]; then log "the previous driver process did not exit:$alive"; else log "stopped the previous driver process"; fi
+    fi
+    sleep 2
+    if [ -n "$1" ] && [ -x "$1" ] && "$1" reenumerate >/dev/null 2>&1; then log "replugged the Mbox in software"; fi
+}
+
 watch() {
     log "watching Core Audio for 3 minutes"
     hot=0
@@ -38,7 +68,7 @@ watch() {
             log "Core Audio above 80% CPU for 15 s: saving a sample and removing the driver"
             sample coreaudiod 5 -file /var/tmp/ghostbox-revenant-coreaudiod-sample.txt >/dev/null 2>&1
             rm -rf "$DST"
-            killall coreaudiod 2>/dev/null
+            restart_core_audio
             return 1
         fi
     done
@@ -89,15 +119,16 @@ case "$1" in
         rm -rf "$DST"
         ditto "$SRC" "$DST" || exit 1
         chown -R root:wheel "$DST"
-        killall coreaudiod 2>/dev/null
-        sleep 2
-        CTL="$(dirname "$SRC")/mbox3-ctl"
-        if [ -x "$CTL" ] && "$CTL" reenumerate >/dev/null 2>&1; then log "replugged the Mbox in software"; fi
+        restart_core_audio "$(dirname "$SRC")/mbox3-ctl"
         log "driver installed, Core Audio restarted"
         case "$3" in
             --watch) watch ;;
             --watch-background) watch_background ;;
         esac
+        ;;
+    restart)  # the package's postinstall: the new driver is in place; $2 = mbox3-ctl
+        restart_core_audio "$2"
+        log "Core Audio restarted"
         ;;
     watch)
         watch
@@ -114,11 +145,11 @@ case "$1" in
         launchctl bootout system/"$WATCH_LABEL" 2>/dev/null
         rm -rf "$WATCH_DIRS".*
         rm -rf "$DST" "$LEGACY"
-        killall coreaudiod 2>/dev/null
+        restart_core_audio
         log "driver removed, Core Audio restarted"
         ;;
     *)
-        sed -n '5,7p' "$0" >&2
+        sed -n '5,8p' "$0" >&2
         exit 2
         ;;
 esac
