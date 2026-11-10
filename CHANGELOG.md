@@ -25,6 +25,15 @@ control panel.
   and 26, Apple Silicon and Intel.
 - Documentation: architecture, protocol, logbook, status, install and release guides.
 
+### Added since 1.0.0-rc.2
+- Update check: once a day the app looks for a newer release on GitHub and offers it in a banner. **Download &
+  Install…** fetches the package, checks it against the release's `SHA256SUMS.txt` and opens it in Installer
+  (nothing installs silently). Also in About (Check for Updates) and the app menu. A new **Setup > Advanced** section
+  turns the daily check off and chooses whether release candidates are offered (by default only while you run one);
+  options there are app-side and never write to the Mbox. The app now reports its full release version (for
+  example 1.0.0-rc.3).
+- `GHOSTBOX_NO_DEVICE=1` keeps a development copy of the app off the Mbox.
+
 ### Fixed since 1.0.0-rc.2
 - Installing or updating while audio plays no longer leaves the Mbox silent. Core Audio runs the driver in a
   process of its own, which lingered for about 5 s after the installer restarted Core Audio, kept streaming, and
@@ -40,9 +49,6 @@ control panel.
   after a USB hiccup). The panel rewrote the clock selector every time, and a clock-selector write, even with the
   value the Mbox already has, silences a running stream until the Mbox is replugged. The panel now writes it only
   when it actually changes, which also keeps a sample-rate change in Setup from silencing playback.
-- The driver log now records output-stream errors and input-rate corrections, which used to leave no trace.
-
-### Fixed since 1.0.0-rc.1
 - Moving an FX send or an effect knob no longer silences the Mbox. The panel re-sent the effect preset with every
   effect change, and the Mbox drops its playback and monitor outputs whenever the preset is written while audio
   streams, until it is replugged. Effect controls are now sent only when they change, the app keeps the preset of a
@@ -55,6 +61,9 @@ control panel.
   steered gently toward the USB clock.
 - Larger IO buffers: the zero timestamp period is now one lap of the rings (16384 frames) instead of 1024, which
   limited every app to 384-frame buffers at every rate (4 ms at 96 kHz).
+- The driver log now records output-stream errors and input-rate corrections, which used to leave no trace.
+
+### Fixed since 1.0.0-rc.1
 - Playback no longer turns noisy after a USB stall. When the Mac held back USB completions for longer than the
   input queue (seen while Safari launched), the driver restarted its input stream without counting the skipped
   frames, which moved Core Audio's timeline away from the output stream until playback restarted. Skipped frames
@@ -64,15 +73,6 @@ control panel.
   that the Mac's playback and the FX return reach both mixes. It now shows the two paths, what you record (the
   inputs straight to the Mac) and what you hear (the hardware mixer), with three short notes on what that means
   in practice, and it takes its colours from the panel's theme.
-
-### Added since 1.0.0-rc.2
-- Update check: once a day the app looks for a newer release on GitHub and offers it in a banner. **Download &
-  Install…** fetches the package, checks it against the release's `SHA256SUMS.txt` and opens it in Installer
-  (nothing installs silently). Also in About (Check for Updates) and the app menu. A new **Setup > Advanced** section
-  turns the daily check off and chooses whether release candidates are offered (by default only while you run one);
-  options there are app-side and never write to the Mbox. The app now reports its full release version (for
-  example 1.0.0-rc.3).
-- `GHOSTBOX_NO_DEVICE=1` keeps a development copy of the app off the Mbox.
 
 ### Notes
 - Not affiliated with Avid. Licensed under GPL-3.0-or-later.
