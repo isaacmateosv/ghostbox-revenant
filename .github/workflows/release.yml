@@ -27,6 +27,8 @@ jobs:
           TAG=${GITHUB_REF_NAME#v}
           case "$TAG" in "$VERSION"|"$VERSION"-*) ;; *) echo "tag $GITHUB_REF_NAME does not match VERSION $VERSION"; exit 1 ;; esac
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          # The app reports this version (1.0.0-rc.3) and compares it with GitHub's releases to offer updates
+          echo "GHOSTBOX_RELEASE_VERSION=$TAG" >> "$GITHUB_ENV"
 
       - name: Unit tests
         run: ./build.sh test

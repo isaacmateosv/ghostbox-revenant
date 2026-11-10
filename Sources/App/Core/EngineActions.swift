@@ -74,6 +74,9 @@ extension Engine {
         case "update_setup":
             guard let s = body["setup"] as? NSDictionary else { return }
             updateSetup(s)
+        case "set_advanced":
+            guard let s = body["settings"] as? NSDictionary else { return }
+            updateAdvanced(s)
         case "update_multi_cfg":
             let mb = state.dict("multi_button")
             for key in ["press_release", "press_hold"] { if let v = body[key] { mb[key] = v } }
@@ -102,6 +105,16 @@ extension Engine {
         }
     }
 
+    /// Setup > Advanced. These options are app-side only: unlike update_setup, changing one never writes to the Mbox.
+    private func updateAdvanced(_ s: NSDictionary) {
+        let advanced = state.dict("advanced")
+        if let on = s["update_check"] as? NSNumber { advanced["update_check"] = on.boolValue }
+        if let choice = s["update_prereleases"] as? String, PanelState.prereleaseChoices.contains(choice) {
+            advanced["update_prereleases"] = choice
+        }
+        onAdvancedChanged?()
+    }
+
     /// Clears every solo in both mixes (a forgotten solo silences everything else).
     func clearSolos() {
         for bus in Bus.allCases {
@@ -113,9 +126,12 @@ extension Engine {
         }
     }
 
+    /// Factory defaults for the Mbox side; the app's own options (Advanced) are kept.
     private func resetToDefaults() {
         let fresh = PanelState.makeDefault(version: AppInfo.version)
-        for (k, v) in fresh { if let key = k as? String, !PanelState.runtimeKeys.contains(key) { state[key] = v } }
+        for (k, v) in fresh {
+            if let key = k as? String, !PanelState.runtimeKeys.contains(key), key != "advanced" { state[key] = v }
+        }
         fullSync()
     }
 

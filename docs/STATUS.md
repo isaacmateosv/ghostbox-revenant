@@ -27,6 +27,7 @@ macOS 15 and 26 (Apple Silicon and Intel), and it passed on macOS 14 (Apple Sili
 | In-app driver update: password prompt, install, software replug, Core Audio restart | On the owner's Mac (Oct 29); Core Audio loaded the new driver in Safe mode |
 | The package on macOS 14, 15 and 26, Apple Silicon and Intel: install, signatures, native CLI, Core Audio loading the driver, the app and its API security, the watchdog surviving the installer, uninstall | GitHub Actions ([CI](https://github.com/isaacmateosv/ghostbox-revenant/actions/workflows/ci.yml)), first green run Oct 29. Every push now covers macOS 15 and 26; macOS 14 (Apple Silicon only) passed up to rc.1, then left CI because GitHub retires its runners on Nov 2 |
 | The rc.1 package on a real Mac with the Mbox (Apple Silicon, macOS 27): replaces the pre-rename driver, Core Audio loads the new one, the watchdog runs its 3 minutes from the installer (Core Audio at 1 % CPU), the app connects, settings kept; installed files identical to the release | On the development Mac, Oct 31 |
+| The update check against GitHub: a build stamped 1.0.0-rc.1 is offered rc.2, downloads its package, verifies it against the release's `SHA256SUMS.txt`; rc.2 reports itself up to date; the banner, About and Setup > Advanced in a development copy kept off the Mbox | On the development Mac, Nov 10 (unit tests cover the rules with a fake GitHub) |
 
 ## Pending (needs the hardware or other machines)
 

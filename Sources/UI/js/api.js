@@ -22,6 +22,9 @@ export const api = {
     openAudioMidiSetup: () => request('/api/open-ams', {}),
     revealData: () => request('/api/reveal-data', {}),
     installDriver: () => request('/api/install-driver', {}),
+    checkUpdates: () => request('/api/check-updates', {}),
+    downloadUpdate: () => request('/api/download-update', {}),
+    revealUpdate: () => request('/api/reveal-update', {}),
 };
 
 /**

@@ -19,6 +19,8 @@ enum PanelState {
     static let multiButtonActions = ["None", "Toggle Dim", "Toggle Mono", "Play/Pause", "Space Bar", "Record (R key)", "Forward to DAW (MIDI)"]
     static let layouts = ["horizontal", "horizontal_meters", "vertical", "vertical_meters"]
     static let latencyModes = ["safe", "balanced", "low"]
+    /// Advanced > Release candidates (Model/Releases.swift)
+    static let prereleaseChoices = ["auto", "on", "off"]
 
     /// Long-press time in ms <-> the hardware's code (MBOX_HOLD_*)
     static let holdCodes: [Int: UInt8] = [250: 0x03, 500: 0x05, 750: 0x08, 1000: 0x0a]
@@ -46,6 +48,8 @@ enum PanelState {
             "setup": ["clock_source": "internal", "sample_rate": 48000, "hold_duration": 500,
                       "dim_leds_off_state": false, "hold_clip_indicators": true, "load_latency_clock": false,
                       "meter_mode": "post", "fx_send_mode": "post", "latency_mode": "safe"],
+            // App-side options in Setup > Advanced; none of them writes to the Mbox
+            "advanced": ["update_check": true, "update_prereleases": "auto"],
             "multi_button": ["press_release": "None", "press_hold": "None", "hold_duration": 500,
                              "last_triggered": "None", "trigger": "", "learning": false],
             "fx_sends": ["hw": [0, 0, 0, 0], "sw": [0, 0, 0, 0]],
@@ -81,5 +85,8 @@ enum PanelState {
             mb["press_release"] = action.contains("Record") ? "Record (R key)" : action.contains("Play") ? "Play/Pause" : "None"
         }
         if !layouts.contains(state.str("layout")) { state["layout"] = "horizontal" }
+        let advanced = state.dict("advanced")
+        if !(advanced["update_check"] is NSNumber) { advanced["update_check"] = true }
+        if !prereleaseChoices.contains(advanced.str("update_prereleases")) { advanced["update_prereleases"] = "auto" }
     }
 }

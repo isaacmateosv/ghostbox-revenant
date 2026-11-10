@@ -2,6 +2,7 @@
 // actions, front-panel following, device loss, clock and latency routing, saving, presets. Nothing touches the
 // real Mbox or the Mac's audio settings. Run with ./build.sh test.
 
+import CryptoKit
 import Foundation
 
 final class FakeMbox: MboxControl {
@@ -81,6 +82,61 @@ struct Rig {
     func poll(_ n: Int = 1) { for _ in 0..<n { engine.poll() } }
     func act(_ body: [String: Any]) { engine.handle(action: body as NSDictionary) }
     var state: NSMutableDictionary { engine.state }
+    func cleanUp() { try? FileManager.default.removeItem(at: dir) }
+}
+
+/// GitHub for the update checker: replies by URL, nothing reaches the network.
+final class FakeTransport: UpdateTransport {
+    var replies: [String: Data] = [:]
+    var files: [String: Data] = [:]
+    var requests: [String] = []
+
+    func fetch(_ url: URL, completion: @escaping (Result<Data, Error>) -> Void) {
+        requests.append(url.absoluteString)
+        completion(replies[url.absoluteString].map { .success($0) } ?? .failure(UpdateError("offline")))
+    }
+
+    func download(_ url: URL, completion: @escaping (Result<URL, Error>) -> Void) {
+        requests.append(url.absoluteString)
+        guard let data = files[url.absoluteString] else { return completion(.failure(UpdateError("offline"))) }
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("ghostbox-fake-\(UUID().uuidString).pkg")
+        try? data.write(to: tmp)
+        completion(.success(tmp))
+    }
+}
+
+let releasesURL = Releases.listURL.absoluteString
+let download = "https://github.com/isaacmateosv/ghostbox-revenant/releases/download"
+let updateFixture = """
+[{"tag_name": "v1.1.0-rc.1", "draft": false, "prerelease": true, "html_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/tag/v1.1.0-rc.1",
+  "assets": [{"name": "GhostBoxRevenant-1.1.0.pkg", "size": 13, "browser_download_url": "\(download)/v1.1.0-rc.1/GhostBoxRevenant-1.1.0.pkg"},
+             {"name": "SHA256SUMS.txt", "size": 100, "browser_download_url": "\(download)/v1.1.0-rc.1/SHA256SUMS.txt"}]},
+ {"tag_name": "v1.0.0", "draft": false, "prerelease": false, "html_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/tag/v1.0.0",
+  "assets": [{"name": "GhostBoxRevenant-1.0.0.pkg", "size": 13, "browser_download_url": "\(download)/v1.0.0/GhostBoxRevenant-1.0.0.pkg"},
+             {"name": "SHA256SUMS.txt", "size": 100, "browser_download_url": "\(download)/v1.0.0/SHA256SUMS.txt"}]}]
+"""
+
+final class UpdateRig {
+    let dir: URL
+    let transport = FakeTransport()
+    let checker: UpdateChecker
+    var settings: (autoCheck: Bool, prereleases: String) = (true, "auto")
+    var infos: [[String: Any]] = []
+    var opened: [URL] = []
+
+    init(current: String, dir existing: URL? = nil) {
+        dir = existing ?? FileManager.default.temporaryDirectory.appendingPathComponent("ghostbox-update-tests-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        checker = UpdateChecker(currentVersion: current, transport: transport, stateFile: dir.appendingPathComponent("update_check.json"),
+                                downloads: dir.appendingPathComponent("updates"))
+        checker.settings = { [unowned self] in self.settings }
+        checker.onChange = { [unowned self] in self.infos.append($0) }
+        checker.open = { [unowned self] in self.opened.append($0) }
+    }
+
+    var last: [String: Any] { infos.last ?? [:] }
+    var phase: String { last["state"] as? String ?? "" }
+    func run(_ work: (UpdateChecker) -> Void) { work(checker); checker.waitUntilIdle() }
     func cleanUp() { try? FileManager.default.removeItem(at: dir) }
 }
 
@@ -223,6 +279,78 @@ enum EngineTests {
             expect(file?.dict("mixes").dict("analog").dict("master").num("fader") == 60, "session saved on quit")
             expect(file.map { d in PanelState.runtimeKeys.allSatisfy { d[$0] == nil } } ?? false, "no runtime keys in the file")
             rig.cleanUp()
+        }
+
+        test("advanced settings never write to the Mbox") {
+            let rig = Rig()
+            rig.poll()
+            func writes() -> [Int] { [rig.mbox.levels.count, rig.mbox.effects.count, rig.mbox.registers.count, rig.mbox.sends.count, rig.mbox.clockSources.count] }
+            let before = writes()
+            var told = 0
+            rig.engine.onAdvancedChanged = { told += 1 }
+            rig.act(["action": "set_advanced", "settings": ["update_check": false, "update_prereleases": "on"]])
+            expect(!rig.state.dict("advanced").bool("update_check") && rig.state.dict("advanced").str("update_prereleases") == "on", "settings applied")
+            expect(told == 1 && rig.engine.store.hasUnsavedChanges, "the update checker is told and the choice is saved")
+            expect(writes() == before, "nothing written to the Mbox")
+            rig.act(["action": "set_advanced", "settings": ["update_check": "yes", "update_prereleases": "sometimes"]])
+            expect(!rig.state.dict("advanced").bool("update_check") && rig.state.dict("advanced").str("update_prereleases") == "on", "invalid values ignored")
+            rig.act(["action": "reset_defaults"])
+            expect(rig.state.dict("advanced").str("update_prereleases") == "on", "Initialize keeps the app's own options")
+            rig.engine.setUpdateInfo(["state": "available", "latest": "1.0.1", "id": 1])
+            let json = StateTree.parse(rig.engine.stateJSON())
+            expect(json?.dict("info").dict("update").str("latest") == "1.0.1", "info.update reaches the panel")
+            rig.cleanUp()
+        }
+
+        test("update check: offer, memory, daily limit") {
+            let rig = UpdateRig(current: "1.0.0-rc.2")
+            rig.transport.replies[releasesURL] = Data(updateFixture.utf8)
+            rig.run { $0.check(force: true) }
+            expect(rig.infos.contains { $0["state"] as? String == "checking" }, "the panel sees the check running")
+            expect(rig.phase == "available" && rig.last["latest"] as? String == "1.1.0-rc.1", "a release candidate is offered its successor")
+            expect(rig.last["message"] as? String == "GhostBox Revenant 1.1.0-rc.1 is available." && rig.last["error"] as? Bool == false, "the result is reported")
+            rig.settings = (true, "off")
+            rig.run { $0.settingsChanged() }
+            expect(rig.phase == "available" && rig.last["latest"] as? String == "1.0.0", "Don't offer: the finished release instead")
+            expect(rig.transport.requests == [releasesURL], "a settings change uses the list already fetched")
+            let again = UpdateRig(current: "1.0.0-rc.2", dir: rig.dir)
+            again.run { $0.settingsChanged() }
+            expect(again.phase == "available" && again.transport.requests.isEmpty, "the last list is kept, and no automatic check within a day")
+            let off = UpdateRig(current: "1.0.0")
+            off.settings = (false, "auto")
+            off.run { $0.check(force: false) }
+            expect(off.transport.requests.isEmpty, "no automatic check when it is turned off")
+            off.run { $0.check(force: true) }
+            expect(off.transport.requests.count == 1 && off.phase == "error" && off.last["error"] as? Bool == true, "an asked-for check reports the failure")
+            off.transport.replies[releasesURL] = Data(updateFixture.utf8)
+            off.run { $0.check(force: true) }
+            expect(off.phase == "current" && off.last["message"] as? String == "GhostBox Revenant 1.0.0 is up to date.", "up to date")
+            rig.cleanUp(); off.cleanUp()
+        }
+
+        test("update download is verified before it opens") {
+            func rig(package: Data) -> UpdateRig {
+                let r = UpdateRig(current: "1.0.0")
+                r.settings = (true, "on")
+                let genuine = Data("package bytes".utf8)
+                let hash = SHA256.hash(data: genuine).map { String(format: "%02x", $0) }.joined()
+                r.transport.replies[releasesURL] = Data(updateFixture.utf8)
+                r.transport.replies["\(download)/v1.1.0-rc.1/SHA256SUMS.txt"] = Data("\(hash)  GhostBoxRevenant-1.1.0.pkg\n".utf8)
+                r.transport.files["\(download)/v1.1.0-rc.1/GhostBoxRevenant-1.1.0.pkg"] = package
+                r.run { $0.check(force: true) }
+                r.run { $0.download() }
+                return r
+            }
+            let good = rig(package: Data("package bytes".utf8))
+            let saved = good.dir.appendingPathComponent("updates/GhostBoxRevenant-1.1.0-rc.1.pkg")
+            expect(good.infos.contains { $0["state"] as? String == "downloading" }, "the panel sees the download")
+            expect(good.phase == "ready" && good.last["file"] as? String == saved.path, "verified and kept")
+            expect(good.opened == [saved] && (try? Data(contentsOf: saved)) == Data("package bytes".utf8), "opened in Installer")
+            let bad = rig(package: Data("tampered bytes".utf8))
+            expect(bad.opened.isEmpty && bad.phase == "available" && bad.last["error"] as? Bool == true, "a mismatch is refused, the offer stays")
+            expect((bad.last["message"] as? String ?? "").contains("does not match"), "and says why")
+            expect(!FileManager.default.fileExists(atPath: bad.dir.appendingPathComponent("updates/GhostBoxRevenant-1.1.0-rc.1.pkg").path), "nothing kept")
+            good.cleanUp(); bad.cleanUp()
         }
 
         print("engine tests: \(checks) checks, \(failures) failed")

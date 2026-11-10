@@ -34,7 +34,10 @@ optional signing and notarization, checks, then a GitHub release with the disk i
    git push origin main v1.0.0
    ```
    A tag with a suffix, like `v1.0.0-rc.1`, publishes a **pre-release** built as version 1.0.0. The tag must match
-   `VERSION` or the workflow stops.
+   `VERSION` or the workflow stops. The workflow also passes the tag's version to the build
+   (`GHOSTBOX_RELEASE_VERSION`), so the app reports `1.0.0-rc.1` and its update check knows it is a release
+   candidate. Keep the asset names (`GhostBoxRevenant-<VERSION>.pkg` and `SHA256SUMS.txt`): the update check looks
+   for them.
 
 ## Signing and notarization (optional)
 

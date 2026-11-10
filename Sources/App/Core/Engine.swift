@@ -27,7 +27,10 @@ final class Engine {
     private(set) var driverLatency: LatencyMode?   // nil: no driver, or one without latency modes
     private var tunerReading: (reading: TunerDecoder.Reading, time: Date)?
     private var driverJob: [String: Any] = ["state": "idle", "id": 0]  // in-app driver installation
+    private(set) var updateInfo: [String: Any] = ["state": "idle", "id": 0]  // Services/UpdateChecker.swift
     var midi: MidiMonitor?
+    /// Called on the engine queue after Setup > Advanced changes (the update checker re-reads its options).
+    var onAdvancedChanged: (() -> Void)?
 
     static let pollInterval = DispatchTimeInterval.milliseconds(55)
     /// Without a panel asking for meters, read them only as a heartbeat (device-loss detection).
@@ -200,6 +203,14 @@ final class Engine {
         changed(persist: false)
     }
 
+    // MARK: - Updates (Services/UpdateChecker.swift)
+
+    /// What the update checker found, shown by the panel as info.update.
+    func setUpdateInfo(_ info: [String: Any]) {
+        updateInfo = info
+        changed(persist: false)
+    }
+
     /// Follows the front-panel soft buttons (Mono, Dim, Dim+Mono = tuner) and the hold time.
     private func followFrontPanel() {
         guard let regs = hardware.readRegisters(), hardware.secondsSinceWrite > 1.0 else { return }
@@ -249,7 +260,7 @@ final class Engine {
         ["app_version": AppInfo.version, "data_dir": store.directory.path, "spdif_locked": spdifLocked,
          "driver_version": driverVersion ?? NSNull(), "driver_latency": driverLatency?.name ?? NSNull(),
          "bundled_driver_version": DriverInstaller.bundledVersion ?? NSNull(), "driver_job": driverJob,
-         "multi_actions": PanelState.multiButtonActions]
+         "update": updateInfo, "multi_actions": PanelState.multiButtonActions]
     }
 
     func stateJSON() -> Data { StateTree.json(["ok": true, "state": state, "rev": revision, "info": info()]) }

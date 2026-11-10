@@ -23,6 +23,13 @@ setopt NULL_GLOB
 cd "$(dirname "$0")"
 
 VERSION=$(tr -d '[:space:]' < VERSION)
+# The release this build is, 1.0.0-rc.3 for a release candidate (the release workflow passes the tag's version):
+# the app compares it with GitHub's releases to offer updates
+RELEASE_VERSION=${GHOSTBOX_RELEASE_VERSION:-$VERSION}
+case "$RELEASE_VERSION" in
+    "$VERSION"|"$VERSION"-*) ;;
+    *) print -P "%F{red}[-]%f GHOSTBOX_RELEASE_VERSION $RELEASE_VERSION does not match VERSION $VERSION"; exit 1 ;;
+esac
 
 # Names and identifiers, in one place
 PRODUCT="GhostBox Revenant"
@@ -161,6 +168,7 @@ build_app() {
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>
     <key>CFBundleVersion</key><string>$VERSION</string>
+    <key>GhostBoxReleaseVersion</key><string>$RELEASE_VERSION</string>
     <key>LSMinimumSystemVersion</key><string>$MINOS</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.music</string>
     <key>NSHighResolutionCapable</key><true/>
@@ -185,7 +193,7 @@ run_tests() {
     $OBJ/app-model-tests
     say "engine tests (fake Mbox and driver)"
     swiftc -O -swift-version 5 -import-objc-header Sources/App/Bridging.h $MODEL_SRC Sources/App/Core/*.swift \
-        Sources/App/Hardware/Interfaces.swift Sources/App/Services/{StateStore,MidiMonitor,DriverInstaller}.swift \
+        Sources/App/Hardware/Interfaces.swift Sources/App/Services/{StateStore,MidiMonitor,DriverInstaller,UpdateChecker}.swift \
         Tests/EngineTests.swift -framework CoreMIDI -o $OBJ/engine-tests
     $OBJ/engine-tests
     say "panel script syntax and gain math"

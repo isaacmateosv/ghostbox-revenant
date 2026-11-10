@@ -44,6 +44,15 @@ Universal (Apple Silicon and Intel), macOS 13 Ventura or later. Not affiliated w
 Updates install the same way, or with **Update Driver…** in the app. Hackintosh notes, uninstalling and
 troubleshooting: [docs/INSTALL.md](docs/INSTALL.md).
 
+**Updates from the app**: once a day the panel checks this project's GitHub releases and shows a banner when a newer
+version is out. **Download & Install…** fetches the package, checks it against the release's `SHA256SUMS.txt` and
+opens it in Installer, where you finish as usual; pause your audio first, because installing restarts Core Audio.
+**Setup > Advanced** turns the daily check off or changes whether release candidates are offered (by default, only
+while you run one); **About > Check for Updates** works either way. The check contacts only GitHub and sends
+nothing about you or your Mbox.
+
+![A newer version is offered in a banner](docs/images/update-banner.png)
+
 ## Using the panel
 
 - **Two mixes**: *Analog 1/2* feeds Line Out 1/2 and the headphones, *S/PDIF L/R* the digital output (⌘1 / ⌘2).

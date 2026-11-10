@@ -49,12 +49,13 @@ const fit = createFit();
 function accept(d, force = false) {
     if (!force && (store.dragging > 0 || !queue.idle)) { pendingState = d; return; }
     pendingState = null;
-    const lastJob = store.info.driver_job;
+    const lastJob = store.info.driver_job, lastUpdate = store.info.update;
     store.S = d.state;
     if (d.rev) store.rev = d.rev;
     if (d.info) store.info = d.info;
-    const job = store.info.driver_job;
+    const job = store.info.driver_job, update = store.info.update;
     if (lastJob && job && job.id !== lastJob.id && job.message) toast(job.message, { error: job.state === 'failed' });
+    if (lastUpdate && update && update.id !== lastUpdate.id && update.message) toast(update.message, { error: !!update.error });
     renderAll();
 }
 
@@ -134,6 +135,17 @@ const actions = {
             'apps that were using audio may need to be reopened. For 3 minutes a watchdog removes the driver again if Core Audio misbehaves.')) return;
         run(api.installDriver(), 'Waiting for your password…');
     },
+    checkUpdates: () => run(api.checkUpdates()),
+    downloadUpdate: () => {
+        const u = store.info.update || {};
+        if (!confirm(`Download GhostBox Revenant ${u.latest} from GitHub and open its installer?\n\n` +
+            "The package is checked against the release's SHA256SUMS.txt first, and nothing is installed until you go " +
+            'through the installer. Pause anything playing through the Mbox before you install: the installer restarts Core Audio.')) return;
+        run(api.downloadUpdate());
+    },
+    revealUpdate: () => run(api.revealUpdate()),
+    updateNotes: () => { const page = store.info.update?.page; if (page) window.open(page, '_blank', 'noopener'); },
+    dismissUpdateBanner: () => chrome.dismissUpdateBanner(),
     initialize: async () => {
         if (!confirm('Reset the mixer, effect and setup to factory defaults? Presets are kept.')) return;
         try { accept(await api.initialize(), true); toast('Defaults restored'); } catch (e) { toast(e.message, { error: true }); }

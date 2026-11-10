@@ -20,6 +20,31 @@ func test(_ name: String, _ body: () -> Void) {
 
 func defaultState() -> NSMutableDictionary { PanelState.makeDefault(version: "test") }
 
+/// A GitHub release list: a draft, a tag that is not a version, a release candidate, a release without a package,
+/// a release with a foreign asset, an older candidate, and a fork's release.
+let releaseFixture = """
+[
+  {"tag_name": "v9.9.9", "draft": true, "prerelease": false, "html_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/tag/v9.9.9", "assets": []},
+  {"tag_name": "nightly", "draft": false, "prerelease": true, "html_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/tag/nightly", "assets": []},
+  {"tag_name": "v1.1.0-rc.1", "draft": false, "prerelease": true, "body": "Test build", "published_at": "2026-12-01T10:00:00Z",
+   "html_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/tag/v1.1.0-rc.1",
+   "assets": [{"name": "GhostBoxRevenant-1.1.0.pkg", "size": 1700000, "browser_download_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/download/v1.1.0-rc.1/GhostBoxRevenant-1.1.0.pkg"},
+              {"name": "SHA256SUMS.txt", "size": 200, "browser_download_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/download/v1.1.0-rc.1/SHA256SUMS.txt"}]},
+  {"tag_name": "v1.0.1", "draft": false, "prerelease": false, "html_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/tag/v1.0.1",
+   "assets": [{"name": "GhostBoxRevenant-1.0.1.dmg", "size": 2300000, "browser_download_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/download/v1.0.1/GhostBoxRevenant-1.0.1.dmg"}]},
+  {"tag_name": "v1.0.0", "draft": false, "prerelease": false, "body": "First release", "published_at": "2026-11-20T10:00:00Z",
+   "html_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/tag/v1.0.0",
+   "assets": [{"name": "evil.pkg", "size": 10, "browser_download_url": "https://example.com/evil.pkg"},
+              {"name": "GhostBoxRevenant-1.0.0.pkg", "size": 1646194, "browser_download_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/download/v1.0.0/GhostBoxRevenant-1.0.0.pkg"},
+              {"name": "SHA256SUMS.txt", "size": 200, "browser_download_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/download/v1.0.0/SHA256SUMS.txt"}]},
+  {"tag_name": "v1.0.0-rc.2", "draft": false, "prerelease": true, "html_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/tag/v1.0.0-rc.2",
+   "assets": [{"name": "GhostBoxRevenant-1.0.0.pkg", "size": 1646194, "browser_download_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/download/v1.0.0-rc.2/GhostBoxRevenant-1.0.0.pkg"},
+              {"name": "SHA256SUMS.txt", "size": 200, "browser_download_url": "https://github.com/isaacmateosv/ghostbox-revenant/releases/download/v1.0.0-rc.2/SHA256SUMS.txt"}]},
+  {"tag_name": "v2.0.0", "draft": false, "prerelease": false, "html_url": "https://github.com/someone-else/fork/releases/tag/v2.0.0",
+   "assets": [{"name": "GhostBoxRevenant-2.0.0.pkg", "size": 1, "browser_download_url": "https://github.com/someone-else/fork/releases/download/v2.0.0/GhostBoxRevenant-2.0.0.pkg"}]}
+]
+"""
+
 func gains(_ points: [Crosspoint], _ source: MixSource) -> [Double] {
     points.filter { $0.source == source }.sorted { $0.output < $1.output }.map(\.level)
 }
@@ -160,6 +185,72 @@ enum AppModelTests {
             expect(PanelState.runtimeKeys.allSatisfy { out[$0] == nil }, "runtime keys are not saved")
             expect(out["mixes"] != nil && out["setup"] != nil, "settings are saved")
         }
+        test("versions order like Semantic Versioning") {
+            let ordered = ["1.0.0-alpha", "1.0.0-alpha.1", "1.0.0-alpha.beta", "1.0.0-beta", "1.0.0-beta.2", "1.0.0-beta.11",
+                           "1.0.0-rc.1", "1.0.0-rc.2", "1.0.0-rc.10", "1.0.0", "1.0.1-rc.1", "1.0.1", "1.1.0", "2.0.0"].compactMap(SemVer.init)
+            expect(ordered.count == 14, "all parse")
+            for (a, b) in zip(ordered, ordered.dropFirst()) { expect(a < b && !(b < a), "\(a) < \(b)") }
+            expect(SemVer("v1.0.0-rc.2")?.description == "1.0.0-rc.2", "a v prefix is accepted")
+            expect(SemVer("1.0.0+build.5") == SemVer("1.0.0"), "build metadata does not count")
+            expect(SemVer("1.0.0-rc.2")?.isPrerelease == true && SemVer("1.0.0")?.isPrerelease == false, "release candidates are pre-releases")
+            for bad in ["1.0", "dev", "1.0.0-", "1.0.0-rc..1", "1.x.0", "", "-1.0.0"] { expect(SemVer(bad) == nil, "'\(bad)' is not a version") }
+        }
+
+        test("release list from GitHub") {
+            let list = Releases.parse(Data(releaseFixture.utf8)) ?? []
+            expect(list.map(\.tag) == ["v1.1.0-rc.1", "v1.0.1", "v1.0.0", "v1.0.0-rc.2"],
+                   "drafts, other tags and other repositories are left out, got \(list.map(\.tag))")
+            let final = list.first { $0.tag == "v1.0.0" }
+            expect(final?.package?.name == "GhostBoxRevenant-1.0.0.pkg" && final?.checksums != nil, "package and checksum list found")
+            expect(final?.assets.contains { $0.name == "evil.pkg" } == false, "assets outside this repository's releases are dropped")
+            expect(final?.notes == "First release" && final?.isPrerelease == false, "notes and flags")
+            expect(list.first?.isPrerelease == true, "pre-release flag")
+            expect(Releases.parse(Data("{\"message\":\"Not Found\"}".utf8)) == nil, "an error reply is not a list")
+        }
+
+        test("which release is offered") {
+            let list = Releases.parse(Data(releaseFixture.utf8)) ?? []
+            func offer(_ current: String, _ choice: String) -> String? {
+                let cur = SemVer(current)!
+                return Releases.offer(list, current: cur, includePrereleases: Releases.includesPrereleases(choice, current: cur))?.tag
+            }
+            expect(offer("1.0.0-rc.1", "auto") == "v1.1.0-rc.1", "a release candidate is offered newer candidates")
+            expect(offer("1.0.0-rc.1", "off") == "v1.0.0", "Don't offer: finished releases only")
+            expect(offer("1.0.0", "auto") == nil, "a finished release is not offered candidates, and 1.0.1 has no package")
+            expect(offer("1.0.0", "on") == "v1.1.0-rc.1", "Offer: candidates for everyone")
+            expect(offer("1.1.0-rc.1", "auto") == nil, "nothing newer")
+            expect(offer("0.9.0", "off") == "v1.0.0", "the newest finished release")
+        }
+
+        test("checksum list") {
+            let hash = String(repeating: "ab", count: 32)
+            let list = "\(hash)  GhostBoxRevenant-1.0.0.pkg\n\(String(repeating: "CD", count: 32)) *GhostBoxRevenant-1.0.0.dmg\nnot a line\n"
+            expect(Releases.checksum(for: "GhostBoxRevenant-1.0.0.pkg", in: list) == hash, "shasum -a 256 line")
+            expect(Releases.checksum(for: "GhostBoxRevenant-1.0.0.dmg", in: list) == String(repeating: "cd", count: 32), "binary mode, lowercased")
+            expect(Releases.checksum(for: "other.pkg", in: list) == nil, "file not listed")
+            expect(Releases.checksum(for: "x.pkg", in: "abc  x.pkg") == nil, "a short hash is refused")
+        }
+
+        test("automatic check timing") {
+            let now = Date()
+            expect(Releases.isDue(lastCheck: nil, lastAttempt: nil, now: now), "never checked")
+            expect(!Releases.isDue(lastCheck: now.addingTimeInterval(-3600), lastAttempt: nil, now: now), "checked an hour ago")
+            expect(Releases.isDue(lastCheck: now.addingTimeInterval(-25 * 3600), lastAttempt: now.addingTimeInterval(-2 * 3600), now: now), "a day old")
+            expect(!Releases.isDue(lastCheck: now.addingTimeInterval(-25 * 3600), lastAttempt: now.addingTimeInterval(-600), now: now),
+                   "an hour between failed attempts")
+            expect(Releases.isDue(lastCheck: now.addingTimeInterval(3600), lastAttempt: nil, now: now), "a clock set backwards counts as due")
+        }
+
+        test("advanced settings") {
+            let s = defaultState()
+            expect(s.dict("advanced").bool("update_check") && s.dict("advanced").str("update_prereleases") == "auto",
+                   "defaults: daily check, release candidates automatic")
+            let state = defaultState()
+            PanelState.restore(StateTree.deepCopy(["advanced": ["update_check": "yes", "update_prereleases": "sometimes"]]), into: state)
+            expect(state.dict("advanced").bool("update_check") && state.dict("advanced").str("update_prereleases") == "auto",
+                   "invalid saved values fall back to the defaults")
+        }
+
         print("app model tests: \(checks) checks, \(failures) failed")
         exit(failures == 0 ? 0 : 1)
     }

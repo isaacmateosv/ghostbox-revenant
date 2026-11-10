@@ -15,9 +15,13 @@ final class MboxHardware: MboxControl {
 
     private static func ok(_ r: Int32) -> Bool { r == Int32(MBOX_OK) }
 
+    /// GHOSTBOX_NO_DEVICE=1 keeps a development copy off the Mbox: on attach it would push its own saved mix.
+    private static let deviceDisabled = ProcessInfo.processInfo.environment["GHOSTBOX_NO_DEVICE"] != nil
+
     // MARK: - Lifetime
 
     func open() -> Bool {
+        guard !MboxHardware.deviceDisabled else { return false }
         dev = mbox_open()
         forgetWrites()
         let ago = dev.map { mbox_info($0).enumeratedAgo } ?? -1

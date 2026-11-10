@@ -8,6 +8,7 @@ const LATENCY_NAMES = { safe: 'Safe', balanced: 'Balanced', low: 'Low' };
 
 export function createChrome(ctx) {
     let driverBannerDismissed = false;
+    let updateBannerDismissed = '';  // the version put off with Later, until the next launch
     let lastPanel = {};
     let statusKey = '';
 
@@ -65,6 +66,31 @@ export function createChrome(ctx) {
         setOn($('#btnTuner'), S.tuner);
         $('#bannerSolo').hidden = !anySolo();
         renderDriverBanner();
+        renderUpdateBanner();
+    }
+
+    /** A newer release on GitHub (info.update, Services/UpdateChecker.swift): offered, downloading, or in Installer. */
+    function renderUpdateBanner() {
+        const u = store.info.update || {};
+        const text = {
+            available: `GhostBox Revenant ${u.latest}${u.prerelease ? ' (release candidate)' : ''} is available. You have ${u.current}.`,
+            downloading: `Downloading GhostBox Revenant ${u.latest} from GitHub…`,
+            ready: `The ${u.latest} installer is open. Pause any audio before you install: it restarts Core Audio.`,
+        }[u.state];
+        const hidden = !text || (u.state !== 'downloading' && updateBannerDismissed === u.latest);
+        $('#bannerUpdate').hidden = hidden;
+        if (hidden) return;
+        setText($('#bannerUpdateText'), text);
+        $('#bannerUpdateNotes').hidden = !u.page;
+        $('#bannerUpdateGet').hidden = u.state !== 'available';
+        $('#bannerUpdateShow').hidden = u.state !== 'ready';
+        $('#bannerUpdateLater').hidden = u.state === 'downloading';
+    }
+
+    function dismissUpdateBanner() {
+        updateBannerDismissed = store.info.update?.latest || '';
+        $('#bannerUpdate').hidden = true;
+        ctx.refit();
     }
 
     /** True when version a is newer than b ("1.0.1" > "1.0" == "1.0.0"). */
@@ -145,5 +171,5 @@ export function createChrome(ctx) {
         ctx.refit();
     }
 
-    return { render, renderPanel, refreshPresets, loadPreset, savePreset, deletePreset, dismissDriverBanner };
+    return { render, renderPanel, refreshPresets, loadPreset, savePreset, deletePreset, dismissDriverBanner, dismissUpdateBanner };
 }

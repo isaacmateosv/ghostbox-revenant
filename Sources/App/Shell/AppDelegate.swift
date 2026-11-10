@@ -4,7 +4,7 @@
 //   Model/      pure state, mixer law, meters, tuner decoding (unit tested: Tests/AppModelTests.swift)
 //   Hardware/   MboxKit (USB control path) and Core Audio driver access
 //   Core/       Engine: state owner, hardware sync, polling, actions
-//   Services/   persistence, MIDI monitor, Multi button, diagnostics
+//   Services/   persistence, MIDI monitor, Multi button, diagnostics, update check
 //   Server/     localhost HTTP server and the panel API
 //   Shell/      this file, the window and the menus
 
@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     private var midi: MidiMonitor!
     private var multiButton: MultiButtonController!
     private var router: APIRouter!
+    private var updates: UpdateChecker!
     private var server: HTTPServer!
     private var statusMenu: StatusMenuController!
     private let panel = MainWindowController()
@@ -41,6 +42,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         return dir
     }
 
+    /// Downloaded update packages: ~/Library/Caches/GhostBox Revenant/Updates, or inside GHOSTBOX_DATA_DIR.
+    private static func updatesDirectory(data: URL) -> URL {
+        if ProcessInfo.processInfo.environment["GHOSTBOX_DATA_DIR"] != nil { return data.appendingPathComponent("updates", isDirectory: true) }
+        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        return caches.appendingPathComponent("GhostBox Revenant/Updates", isDirectory: true)
+    }
+
     /// The bundled panel, or GHOSTBOX_UI_DIR to work on Sources/UI without rebuilding.
     private static func uiDirectory() -> URL {
         if let custom = ProcessInfo.processInfo.environment["GHOSTBOX_UI_DIR"] { return URL(fileURLWithPath: custom, isDirectory: true) }
@@ -52,15 +60,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
     func applicationDidFinishLaunching(_ note: Notification) {
         NSApp.mainMenu = MainMenu.build()
-        engine = Engine(store: StateStore(directory: AppDelegate.dataDirectory()), hardware: MboxHardware(), driver: CoreAudioDriver())
+        let data = AppDelegate.dataDirectory()
+        engine = Engine(store: StateStore(directory: data), hardware: MboxHardware(), driver: CoreAudioDriver())
         midi = MidiMonitor()
         engine.midi = midi
         multiButton = MultiButtonController(engine: engine)
         midi.onMessage = { [weak self] port, bytes in DispatchQueue.main.async { self?.handleMidi(port, bytes) } }
         engine.start()
         statusMenu = StatusMenuController(engine: engine)
+        startUpdateChecks(data: data)
 
-        router = APIRouter(engine: engine, uiDirectory: AppDelegate.uiDirectory(), midi: midi)
+        router = APIRouter(engine: engine, uiDirectory: AppDelegate.uiDirectory(), midi: midi, updates: updates)
         server = HTTPServer { [router] request in router!.handle(request) }
         let preferred = UInt16(ProcessInfo.processInfo.environment["GHOSTBOX_PORT"] ?? "") ?? AppDelegate.defaultPort
         server.start(preferredPort: preferred) { [weak self] port in
@@ -70,6 +80,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
             self.panel.load(url)
         }
         panel.show()
+    }
+
+    /// GitHub release checks (Services/UpdateChecker.swift), steered by Setup > Advanced.
+    private func startUpdateChecks(data: URL) {
+        let engine = self.engine!
+        updates = UpdateChecker(currentVersion: AppInfo.version, transport: GitHubTransport(),
+                                stateFile: data.appendingPathComponent("update_check.json"),
+                                downloads: AppDelegate.updatesDirectory(data: data))
+        updates.settings = {
+            engine.perform { (engine.state.dict("advanced").bool("update_check"), engine.state.dict("advanced").str("update_prereleases")) }
+        }
+        updates.onChange = { info in engine.perform { engine.setUpdateInfo(info) } }
+        updates.open = { file in DispatchQueue.main.async { NSWorkspace.shared.open(file) } }
+        engine.onAdvancedChanged = { [weak self] in self?.updates.settingsChanged() }
+        updates.start()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ app: NSApplication) -> Bool { false }
@@ -98,6 +123,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     @objc func showPanel(_ sender: Any?) { panel.show() }
     @objc func reloadPanel(_ sender: Any?) { panel.reload() }
     @objc func showSetup(_ sender: Any?) { panel.show(); panel.run("setup") }
+    @objc func checkForUpdates(_ sender: Any?) { panel.show(); panel.run("about"); updates.check(force: true) }
     @objc func clearClips(_ sender: Any?) { panel.run("clearClips") }
 
     @objc func toggleFit(_ sender: Any?) {
