@@ -152,7 +152,7 @@ int mbox_setup_defaults(MboxDevice* dev) {
     r |= mbox_write_reg(dev, MBOX_REG_TUNER, 0);
     r |= mbox_set_clock_source(dev, MBOX_CLOCK_INTERNAL);
     r |= mbox_set_internal_rate(dev, 48000);
-    r |= mbox_write_reg(dev, MBOX_REG_LLM, 0);
+    r |= mbox_write_reg(dev, MBOX_REG_LLM, MBOX_HOST_CONTROL_OFF);  // as Avid's driver: inputs reach the outputs
     for (int in = 0; in < 4; in++) {
         for (int out = 0; out < 4; out++) {
             // Hardware inputs muted; returns 1/2 -> Out 1/2 and 3/4 -> Out 3/4 at unity

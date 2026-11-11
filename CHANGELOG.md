@@ -25,6 +25,12 @@ control panel.
   and 26, Apple Silicon and Intel.
 - Documentation: architecture, protocol, logbook, status, install and release guides.
 
+### Fixed since 1.0.0-rc.4
+- **You can hear your inputs again.** The mixer's input faders (Input 1/2, S/PDIF in) did nothing: no input reached
+  Out 1/2 or the headphones. The app wrote 0 to the Mbox's Host Control register, which leaves input monitoring to
+  Pro Tools, so the Mbox kept the inputs off its outputs. It now writes 2, as Avid's own driver does. `mbox3-ctl llm`
+  takes 0, 1 or 2, and `mbox3-ctl init` writes 2.
+
 ### Added since 1.0.0-rc.3
 - **Session** page in the tools panel: the highest peak, clip count and time of the last clip of every channel
   (inputs, DAW returns, outputs) since you last cleared it, read from the Mbox's own meters, and a graph of the peak

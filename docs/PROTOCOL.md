@@ -58,7 +58,7 @@ All controls are class requests to interface 1, with `wIndex = unit << 8 | 1`:
 
 | Register | Meaning | Values |
 |---|---|---|
-| `0x00` | Low Latency Monitoring (a Pro Tools mode) | 0/1. Keep 0: Avid documents inputs muting in this mode. Avid's driver writes 2 at start-up; that value's meaning is not confirmed. |
+| `0x00` | Host Control (Avid's older panel called it "Disable Host Control"; Pro Tools' Low Latency Monitoring) | Write **2**, as Avid's driver does at start-up: the hardware mixer feeds the inputs to the outputs. With 0 the mixer's hardware-input crosspoints are ignored and no input reaches Out 1/2 or the headphones (Nov 10, 2026: heard, and Out 1/2 on the meter block followed Input 1 only with 1 or 2). Reads back what was written. |
 | `0x01` | Mono | 0/1 |
 | `0x02` | Dim | 0/1 |
 | `0x03` | Tuner mode (also: Dim + Mono pressed together) | 0/1 |
@@ -127,7 +127,7 @@ change (made while idle) is: SET internal rate, GET valid, GET rate, SET clock s
 after power-up returns garbage.
 
 GhostBox writes the same controls with the same request types. Its reads go a little further (all front-panel
-registers, the S/PDIF clock), and it writes 0 rather than 2 to the Low Latency Monitoring register.
+registers, the S/PDIF clock), and, since rc.5, it writes 2 to the Host Control register like Avid's driver (up to rc.4 it wrote 0, which kept the inputs off the outputs).
 
 ## Tuner
 

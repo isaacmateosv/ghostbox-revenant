@@ -113,7 +113,8 @@ final class Engine {
     }
 
     func applyPanelRegisters() {
-        hardware.writeRegister(Int(MBOX_REG_LLM), 0)  // LLM is a Pro Tools mode; Avid documents it muting inputs
+        // Host control off, as Avid's driver: with 0 the Mbox keeps every input off the outputs (no monitoring)
+        hardware.writeRegister(Int(MBOX_REG_LLM), UInt8(MBOX_HOST_CONTROL_OFF))
         hardware.writeRegister(Int(MBOX_REG_LED_DIM), setup.bool("dim_leds_off_state") ? 1 : 0)
         hardware.writeRegister(Int(MBOX_REG_HOLD), PanelState.holdCodes[Int(setup.num("hold_duration"))] ?? UInt8(MBOX_HOLD_500MS))
     }

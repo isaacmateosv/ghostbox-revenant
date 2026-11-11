@@ -3,6 +3,7 @@
 
 #include "../MboxKit/MboxKit.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -15,7 +16,7 @@ static const char* kUsage =
     "  init                           reset the hardware to defaults\n"
     "  mono|dim|tuner|led-dim <0|1>   front-panel functions\n"
     "  hold-duration <code>           long-press time (3=250ms 5=500ms 8=750ms 10=1s)\n"
-    "  llm <0|1>                      Low Latency Monitoring state\n"
+    "  llm <0|1|2>                    Host Control register (2 = off, Avid's value: inputs monitored)\n"
     "  clock-source <internal|spdif>  clock selector only\n"
     "  clock <internal|spdif> [rate]  selector plus internal rate\n"
     "  sample-rate <rate>             internal clock rate (44100/48000/88200/96000)\n"
@@ -114,6 +115,7 @@ static int writeCommand(MboxDevice* dev, const std::string& cmd, int argc, char*
     if (cmd == "mono" || cmd == "dim" || cmd == "tuner" || cmd == "led-dim" || cmd == "llm") {
         uint8_t reg = cmd == "mono" ? MBOX_REG_MONO : cmd == "dim" ? MBOX_REG_DIM : cmd == "tuner" ? MBOX_REG_TUNER
                     : cmd == "led-dim" ? MBOX_REG_LED_DIM : MBOX_REG_LLM;
+        if (reg == MBOX_REG_LLM) return mbox_write_reg(dev, reg, (uint8_t)std::min(2L, std::max(0L, num(argv[2]))));
         return mbox_write_reg(dev, reg, num(argv[2]) ? 1 : 0);
     }
     if (cmd == "hold-duration") return mbox_write_reg(dev, MBOX_REG_HOLD, (uint8_t)num(argv[2]));

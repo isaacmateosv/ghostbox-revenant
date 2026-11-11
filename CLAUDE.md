@@ -87,7 +87,8 @@ Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=
   ahead, never resync backwards, pump OUT from both IN and OUT completions.
 - Meter block (MEM 0x10 @0x2001, 15 words): 0-1 In1/In2, 2-3 S/PDIF in, 4-7 SW returns, 8-9 Out1/2,
   10-11 Out3/4, 12 FX input, 13-14 FX out L/R. Full scale 32767.
-- Registers @0x2001 (bRequest 3): 0 LLM (keep 0), 1 Mono, 2 Dim, 3 Tuner, 4 LED dim, 5 hold time
+- Registers @0x2001 (bRequest 3): 0 Host Control / LLM (write 2 = MBOX_HOST_CONTROL_OFF, as Avid; **0 keeps every input off the outputs**: no
+  input monitoring, verified Nov 10 by ear and on the meters), 1 Mono, 2 Dim, 3 Tuner, 4 LED dim, 5 hold time
   (3/5/8/10 = 250/500/750/1000 ms). Confirmed from Avid's daemon symbols.
 - Mixer/FX-send gains are **write-only** (GET CUR returns 0 for every crosspoint; RANGE reports 0 subranges).
   Max gain treated as 0 dB.
@@ -129,7 +130,7 @@ Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=
   (78-byte packets) that Avid's driver never selects: leave it alone. Write only controls Avid's driver writes.
 - Avid's driver at plug-in (Windows USB captures, decoded Nov 2026): SET_INTERFACE 2/3/4 alt 0, then 2/3 alt 1;
   clock selector 1 + internal rate; every crosspoint and FX send 0x8000 except SWn→Outn 0 dB; LLM register = **2**
-  (we write 0, which works); effect preset 0, duration 0x3fff, feedback 0x3f, volume 0x3f; hold 5; LED dim 0. Its
+  (we write 2 too since rc.5); effect preset 0, duration 0x3fff, feedback 0x3f, volume 0x3f; hold 5; LED dim 0. Its
   panel then polls Mono/Dim/Tuner every 250 ms. Rate change (idle): SET internal rate, GET valid, GET rate, SET
   selector 1. The first meter read after power-up returns garbage.
 

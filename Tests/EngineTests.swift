@@ -159,7 +159,7 @@ enum EngineTests {
             expect(rig.mbox.forgets >= 1, "a full sync forgets the write cache")
             expect(rig.mbox.levels.count == 36, "both mixes written (18 crosspoints each), got \(rig.mbox.levels.count)")
             expect(rig.mbox.level(.hardware(0), 0) == 100 && rig.mbox.level(.hardware(0), 1) == 100, "saved Input 1 level restored")
-            expect(rig.mbox.lastRegister(MBOX_REG_LLM) == 0, "Low Latency Monitoring kept off")
+            expect(rig.mbox.lastRegister(MBOX_REG_LLM) == UInt8(MBOX_HOST_CONTROL_OFF), "host control off, so inputs can be monitored")
             expect(rig.mbox.lastRegister(MBOX_REG_TUNER) == 0, "tuner off after attach")
             expect(rig.mbox.clockSources.isEmpty, "the clock selector is not rewritten when it already matches")
             expect(rig.mbox.internalRates.isEmpty && rig.driver.rates.isEmpty, "the saved rate is not pushed at startup")

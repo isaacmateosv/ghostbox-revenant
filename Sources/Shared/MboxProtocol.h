@@ -9,7 +9,8 @@
 //
 // Control path: class requests to interface 1, wIndex = unit << 8 | 1 (confirmed against Avid's 1.2.13 daemon):
 //   Extension unit 0x20, memory requests (bRequest 0x03):
-//     0x00 Low Latency Monitoring  0x01 Mono  0x02 Dim  0x03 Tuner  0x04 Dim button LEDs instead of off
+//     0x00 Host Control / Low Latency Monitoring (2 = host control off: the hardware mixer feeds inputs to the
+//          outputs; 0 = Pro Tools controls monitoring and the inputs stay off the outputs)  0x01 Mono  0x02 Dim  0x03 Tuner  0x04 Dim button LEDs instead of off
 //     0x05 Long-press time (3/5/8/10 = 250/500/750/1000 ms)  0x10 Meter block (15 x uint16 LE, full scale 32767)
 //   Mixer unit 0x40: wValue 0x01NN, NN = input * 4 + output. Inputs 0-3 software returns, 4-7 hardware inputs,
 //     8 FX return; outputs 0-1 Out 1/2 (and headphones), 2-3 Out 3/4 (S/PDIF out). Gain: int16, 1/256 dB.
@@ -67,6 +68,10 @@ enum {
     MBOX_REG_LLM = 0x00, MBOX_REG_MONO = 0x01, MBOX_REG_DIM = 0x02, MBOX_REG_TUNER = 0x03,
     MBOX_REG_LED_DIM = 0x04, MBOX_REG_HOLD = 0x05, MBOX_REG_METERS = 0x10,
 };
+
+// MBOX_REG_LLM values. Avid's driver writes 2 at start-up. With 0 the mixer's hardware-input crosspoints are ignored:
+// nothing from the inputs reaches Out 1/2 or the headphones (heard and measured on the meters, Nov 10, 2026).
+enum { MBOX_HOST_CONTROL_ON = 0, MBOX_HOST_CONTROL_OFF = 2 };
 
 // Long-press time codes for MBOX_REG_HOLD
 enum { MBOX_HOLD_250MS = 0x03, MBOX_HOLD_500MS = 0x05, MBOX_HOLD_750MS = 0x08, MBOX_HOLD_1000MS = 0x0a };
