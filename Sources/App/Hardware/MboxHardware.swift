@@ -141,6 +141,13 @@ final class MboxHardware: MboxControl {
         guard let dev else { return }
         lastWrite = Date()
         mbox_set_clock_source(dev, Int32(spdif ? MBOX_CLOCK_SPDIF : MBOX_CLOCK_INTERNAL))
+        // Like an effect preset, a clock-selector write silences a running stream until the Mbox re-enumerates
+        // (heard Nov 10 on macOS 13: switching to the internal clock muted everything). Right after an enumeration
+        // it is harmless, which also keeps the write after this replug from starting another one.
+        if Date() >= freshUntil {
+            NSLog("Mbox3: clock source changed, replugging the Mbox to restore its outputs")
+            reenumerate()
+        }
     }
 
     func setInternalRate(_ rate: Int) {

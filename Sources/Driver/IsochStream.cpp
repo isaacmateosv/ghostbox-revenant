@@ -39,6 +39,7 @@ UInt64 gOutPos = 0;                                // device time of the next OU
 UInt64 gLastInEndFrame = 0, gLastInEndPos = 0;     // bus frame after the newest IN transfer, and inPos there
 bool gOutSynced = false;
 UInt64 gLastOutQueuedFrame = 0;                    // frame numbers must keep increasing per pipe
+bool gDeviceGone = false;                          // the Mbox left the bus: touch no transfer until it detaches
 
 // Audio rings (float, interleaved). Positions are device sample times.
 float gInRing[kRingFrames * kChannels];
@@ -135,6 +136,19 @@ void inputDone(Xfer* x) {
     pumpOut();
 }
 
+// What transfers return once the Mbox has left the bus (replugged, unplugged, powered off). Their buffers may already
+// be unmapped: packing OUT audio into one crashed the driver process on a replug (Nov 10, macOS 13).
+bool deviceGoneStatus(IOReturn r) {
+    return r == kIOReturnNoDevice || r == kIOReturnNotFound || r == kIOReturnNotAttached || r == kIOReturnOffline ||
+           r == kIOReturnAborted;
+}
+
+void markDeviceGone(IOReturn r) {
+    if (gDeviceGone) return;
+    gDeviceGone = true;
+    os_log(driverLog(), "the Mbox is leaving the bus (0x%x): transfers stop until it detaches", r);
+}
+
 // OUT problems used to leave no trace: log them, at most once a second (they can repeat every millisecond).
 void logOutFailure(const char* what, IOReturn kr) {
     UInt64 now = mach_absolute_time();
@@ -147,7 +161,8 @@ void xferDone(void* refcon, IOReturn result, void*) {
     Xfer* x = (Xfer*)refcon;
     gPendingXfers--;
     if (!x->in) x->busy = false;
-    if (!gStreaming) return;
+    if (!gStreaming || gDeviceGone) return;
+    if (deviceGoneStatus(result)) { markDeviceGone(result); return; }  // aborts while streaming come from removal
     (x->in ? gInDone : gOutDone)++;
     if (result != kIOReturnSuccess) {
         gLastStatus = result;
@@ -158,7 +173,7 @@ void xferDone(void* refcon, IOReturn result, void*) {
 }
 
 void submitIn(Xfer* x) {
-    for (int attempt = 0; attempt < 2 && gStreaming; attempt++) {
+    for (int attempt = 0; attempt < 2 && gStreaming && !gDeviceGone; attempt++) {
         for (UInt32 f = 0; f < kMicroframesPerXfer; f++) {
             x->frames[f].frReqCount = kMaxPacket; x->frames[f].frActCount = 0; x->frames[f].frStatus = 0;
         }
@@ -167,6 +182,7 @@ void submitIn(Xfer* x) {
                                                                x->frames, xferDone, x);
         gNextInFrame += kMicroframesPerXfer / 8;
         if (kr == kIOReturnSuccess) { gPendingXfers++; return; }
+        if (deviceGoneStatus(kr)) { markDeviceGone(kr); return; }
         gSubmitErrors++; gLastStatus = kr;
         os_log_error(driverLog(), "submit in failed: 0x%x, resyncing", kr);
         gInResyncs++;
@@ -207,6 +223,7 @@ void fillOut(Xfer* x) {
 
 // Keep OUT scheduled up to the latency profile's lead ahead of the bus, never further (writes may complete early).
 void pumpOut() {
+    if (gDeviceGone) return;
     UInt64 cur = busFrame();
     if (gOutSynced) {
         UInt32 leadUs = gNextOutFrame > cur ? (UInt32)((gNextOutFrame - cur) * 1000) : 0;
@@ -232,7 +249,10 @@ void pumpOut() {
         gNextOutFrame += kMicroframesPerXfer / 8;
         int bucket = std::clamp((int)(x->frame - cur), 0, 7);
         if (kr == kIOReturnSuccess) { x->busy = true; gPendingXfers++; gLeadHist[bucket]++; gLastOutQueuedFrame = x->frame; }
-        else {
+        else if (deviceGoneStatus(kr)) {
+            markDeviceGone(kr);
+            break;
+        } else {
             gSubmitErrors++; gLastStatus = kr; gOutSynced = false; gLeadHist[8 + bucket]++;
             logOutFailure("submit out failed, resyncing", kr);
             break;
@@ -378,6 +398,7 @@ bool start() {
     gNextInFrame = busFrame() + 3;
     gLastInEndFrame = gNextInFrame; gLastInEndPos = 0;
     gOutSynced = false;
+    gDeviceGone = false;
     for (UInt32 i = 0; i < kOutXfers; i++) gOut[i].busy = false;
     gStreaming = true;
     gPendingXfers = 0;
