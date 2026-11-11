@@ -13,6 +13,7 @@ final class FakeMbox: MboxControl {
     var regs = MboxRegs(llm: 0, mono: 0, dim: 0, tuner: 0, ledDim: 0, hold: 5)
     var meters: [UInt16]? = Array(repeating: 0, count: 15)
     var clock = ClockStatus(spdif: false, rate: 48000, spdifLocked: false)
+    var clockReadFails = false
 
     var levels: [Crosspoint] = []          // every crosspoint written, in order
     var sends: [([Double], [Double])] = []
@@ -31,7 +32,7 @@ final class FakeMbox: MboxControl {
     func writeRegister(_ reg: Int, _ value: UInt8) { registers.append((reg, value)) }
     func readRegisters() -> MboxRegs? { regs }
     func readMeters() -> [UInt16]? { meters }
-    func clockStatus() -> ClockStatus? { clock }
+    func clockStatus() -> ClockStatus? { clockReadFails ? nil : clock }
     func setClockSource(spdif: Bool) {
         clockSources.append(spdif)
         clock = ClockStatus(spdif: spdif, rate: clock.rate, spdifLocked: clock.spdifLocked)
@@ -263,6 +264,10 @@ enum EngineTests {
             rig.mbox.close()
             rig.poll(18)
             expect(rig.mbox.clockSources == [false, true], "a re-attach with the selector already right writes nothing")
+            rig.mbox.clockReadFails = true
+            rig.mbox.close()
+            rig.poll(18)
+            expect(rig.mbox.clockSources == [false, true], "a clock that cannot be read is not rewritten (no needless replug)")
             rig.cleanUp()
         }
 

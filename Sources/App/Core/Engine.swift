@@ -102,7 +102,8 @@ final class Engine {
     func applyClock(userRate: Bool) {
         guard hardware.isOpen else { return }
         let spdif = setup.str("clock_source") == "spdif"
-        if hardware.clockStatus()?.spdif != spdif { hardware.setClockSource(spdif: spdif) }
+        // A failed read is not a difference: writing anyway would silence the Mbox and replug it for nothing
+        if let current = hardware.clockStatus(), current.spdif != spdif { hardware.setClockSource(spdif: spdif) }
         guard !spdif else { return }
         let rate = Int(setup.num("sample_rate"))
         if driver.isActive {

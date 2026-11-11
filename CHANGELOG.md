@@ -25,6 +25,11 @@ control panel.
   and 26, Apple Silicon and Intel.
 - Documentation: architecture, protocol, logbook, status, install and release guides.
 
+### Fixed since 1.0.0-rc.5
+- When the app could not read the Mbox's clock (right after it reconnects, for example) it treated that as a
+  different clock and rewrote it, which silences the Mbox and makes the app replug it. A failed read now leaves the
+  clock alone. Suspected cause of the extra replugs seen after installing rc.5 on macOS 13.
+
 ### Fixed since 1.0.0-rc.4
 - **You can hear your inputs again.** The mixer's input faders (Input 1/2, S/PDIF in) did nothing: no input reached
   Out 1/2 or the headphones. The app wrote 0 to the Mbox's Host Control register, which leaves input monitoring to
