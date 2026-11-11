@@ -150,6 +150,20 @@ const actions = {
         if (!confirm('Reset the mixer, effect and setup to factory defaults? Presets are kept.')) return;
         try { accept(await api.initialize(), true); toast('Defaults restored'); } catch (e) { toast(e.message, { error: true }); }
     },
+    abSwap: () => {
+        const ab = store.S.ab?.[store.S.active_mix];
+        const first = !(ab?.other && ab.other.hw);
+        ctx.post('ab_swap', { bus: store.S.active_mix });
+        toast(first ? `B is a copy of ${busName(store.S.active_mix)} for now: change it, then press A/B to compare`
+                    : `Now hearing ${ab.slot === 'B' ? 'A' : 'B'}`);
+    },
+    talkback: () => {
+        const open = !!store.S.talkback;
+        store.S.talkback = open ? '' : store.S.active_mix;
+        ctx.post('set_talkback', { on: !open, bus: store.S.active_mix }, 'talkback');
+        renderAll();
+    },
+    clearSession: () => { ctx.post('clear_session'); tools.refreshSession(true); toast('Session log cleared'); },
     multiLearn: () => tools.multi.learn(),
     multiForget: () => tools.multi.forget(),
     openAMS: () => run(api.openAudioMidiSetup()),
@@ -162,6 +176,14 @@ const changes = {
     holdTime: value => { store.S.setup.hold_duration = Number(value); ctx.post('update_setup', { setup: store.S.setup }, 'setup'); },
     tunerInput: value => tuner.selectInput(value),
     calc: () => tools.calc(),
+    clipAlerts: (_, el) => {
+        store.S.advanced = { ...(store.S.advanced || {}), clip_alerts: el.checked };
+        ctx.post('set_advanced', { settings: { clip_alerts: el.checked } }, 'advanced:clip_alerts');
+    },
+    talkInput: value => {
+        store.S.advanced = { ...(store.S.advanced || {}), talkback_input: Number(value) };
+        ctx.post('set_advanced', { settings: { talkback_input: Number(value) } }, 'advanced:talkback_input');
+    },
 };
 
 document.addEventListener('click', e => {

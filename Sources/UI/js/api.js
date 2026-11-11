@@ -12,6 +12,7 @@ export const api = {
     state: () => request('/api/state'),
     meters: () => request('/api/meters'),
     midi: () => request('/api/midi'),
+    session: () => request('/api/session'),
     diagnostics: () => request('/api/diagnostics'),
     presets: () => request('/api/presets/list'),
     savePreset: name => request('/api/presets/save', { name }),

@@ -13,10 +13,13 @@ enum Bus: String, CaseIterable {
 
 enum PanelState {
     /// Live device information: never saved, never restored.
-    static let runtimeKeys: Set<String> = ["connected", "streaming", "firmware", "package", "tuner", "meters", "clips", "coreaudio"]
+    static let runtimeKeys: Set<String> = ["connected", "streaming", "firmware", "package", "tuner", "meters", "clips", "coreaudio", "talkback"]
 
     static let sampleRates = [44100, 48000, 88200, 96000]
-    static let multiButtonActions = ["None", "Toggle Dim", "Toggle Mono", "Play/Pause", "Space Bar", "Record (R key)", "Forward to DAW (MIDI)"]
+    static let multiButtonActions = ["None", "Toggle Dim", "Toggle Mono", "Play/Pause", "Space Bar", "Record (R key)", "Forward to DAW (MIDI)",
+                                     "Next Preset", "Swap A/B Mix", "Talkback (toggle)"]
+    /// Talkback: which hardware input it opens (0 = Input 1 ... 3 = S/PDIF In R)
+    static let talkbackInputs = 0..<4
     static let layouts = ["horizontal", "horizontal_meters", "vertical", "vertical_meters"]
     static let latencyModes = ["safe", "balanced", "low"]
     /// Advanced > Release candidates (Model/Releases.swift)
@@ -49,7 +52,13 @@ enum PanelState {
                       "dim_leds_off_state": false, "hold_clip_indicators": true, "load_latency_clock": false,
                       "meter_mode": "post", "fx_send_mode": "post", "latency_mode": "safe"],
             // App-side options in Setup > Advanced; none of them writes to the Mbox
-            "advanced": ["update_check": true, "update_prereleases": "auto"],
+            "advanced": ["update_check": true, "update_prereleases": "auto", "clip_alerts": true, "talkback_input": 0],
+            // "" or the mix (Bus) talkback is open on; runtime only, so a relaunch never starts with it open
+            "talkback": "",
+            // The preset loaded last (Next Preset steps on from it)
+            "last_preset": "",
+            // A/B per mix: which slot is live, and the other slot's mix (empty until the first swap)
+            "ab": ["analog": ["slot": "A", "other": [String: Any]()], "spdif": ["slot": "A", "other": [String: Any]()]],
             "multi_button": ["press_release": "None", "press_hold": "None", "hold_duration": 500,
                              "last_triggered": "None", "trigger": "", "learning": false],
             "fx_sends": ["hw": [0, 0, 0, 0], "sw": [0, 0, 0, 0]],
@@ -74,6 +83,15 @@ enum PanelState {
     static func restore(_ saved: NSMutableDictionary, into state: NSMutableDictionary) {
         for key in runtimeKeys { saved.removeObject(forKey: key) }
         StateTree.merge(saved, into: state)
+        // A stored B mix is a whole mix: merging it into the empty default would drop every key, so it is copied
+        // over defaults of a mix instead
+        let ab = (saved["ab"] as? NSDictionary) ?? [:]
+        for bus in Bus.allCases {
+            guard let other = (ab[bus.rawValue] as? NSDictionary)?["other"] as? NSDictionary, other["hw"] != nil else { continue }
+            let mix = StateTree.deepCopy(defaultMix(spdif: bus == .spdif))
+            StateTree.merge(other, into: mix)
+            state.dict("ab").dict(bus.rawValue)["other"] = mix
+        }
         migrate(state)
     }
 
@@ -88,5 +106,11 @@ enum PanelState {
         let advanced = state.dict("advanced")
         if !(advanced["update_check"] is NSNumber) { advanced["update_check"] = true }
         if !prereleaseChoices.contains(advanced.str("update_prereleases")) { advanced["update_prereleases"] = "auto" }
+        if !(advanced["clip_alerts"] is NSNumber) { advanced["clip_alerts"] = true }
+        if !talkbackInputs.contains(Int(advanced.num("talkback_input"))) { advanced["talkback_input"] = 0 }
+        for bus in Bus.allCases {
+            let ab = state.dict("ab").dict(bus.rawValue)
+            if ab.str("slot") != "A" && ab.str("slot") != "B" { ab["slot"] = "A" }
+        }
     }
 }

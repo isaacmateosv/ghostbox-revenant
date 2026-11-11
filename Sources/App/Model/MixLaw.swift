@@ -54,8 +54,13 @@ enum MixLaw {
             (includeFx && (fx.bool("solo_l") || fx.bool("solo_r")))
     }
 
+    /// Talkback lowers the DAW returns and the FX return by this factor (about 20 dB or more on the hardware taper).
+    static let talkbackDuck = 0.1
+
     /// Crosspoints of one stereo mix: fader, pan scaled by width, balance, mutes, solo, master fader/swap/mutes.
-    static func crosspoints(for mix: NSMutableDictionary, bus: Bus) -> [Crosspoint] {
+    /// `talkback` (a hardware input, 0-3) puts that input in the middle of the mix at unity, past its mute and any
+    /// solo, and ducks the DAW and FX returns; the master section still applies.
+    static func crosspoints(for mix: NSMutableDictionary, bus: Bus, talkback: Int? = nil) -> [Crosspoint] {
         let master = mix.dict("master"), fxr = mix.dict("fx_ret")
         let soloing = anySolo(mix, includeFx: true)
         let masterFader = master.num("fader")
@@ -64,9 +69,9 @@ enum MixLaw {
         let balL = bal <= 0 ? 1.0 : 1.0 - bal, balR = bal >= 0 ? 1.0 : 1.0 + bal
         let width = master.num("width") / 100.0
 
-        func lr(_ fader: Double, _ pan: Double, _ muted: Bool, _ soloed: Bool) -> (Double, Double) {
+        func lr(_ fader: Double, _ pan: Double, _ muted: Bool, _ soloed: Bool, duck: Double = 1) -> (Double, Double) {
             if muted || (soloing && !soloed) || fader <= 0 || masterFader <= 0 { return (0, 0) }
-            let base = faderToLevel(fader) * mScale
+            let base = faderToLevel(fader) * mScale * duck
             let p = pan / 50.0 * width
             var l = base * (p <= 0 ? 1.0 : 1.0 - p) * balL
             var r = base * (p >= 0 ? 1.0 : 1.0 + p) * balR
@@ -82,15 +87,17 @@ enum MixLaw {
             out.append(Crosspoint(source: source, output: outL, level: gains.0))
             out.append(Crosspoint(source: source, output: outR, level: gains.1))
         }
+        let duck = talkback == nil ? 1.0 : talkbackDuck
         for (i, ch) in mix.array("hw").dicts.prefix(4).enumerated() {
+            if i == talkback { add(.hardware(i), lr(unityFader, 0, false, true)); continue }
             add(.hardware(i), lr(ch.num("fader"), ch.num("pan"), ch.bool("mute"), ch.bool("solo")))
         }
         for (i, ch) in mix.array("sw").dicts.prefix(4).enumerated() {
-            add(.software(i), lr(ch.num("fader"), ch.num("pan"), ch.bool("mute"), ch.bool("solo")))
+            add(.software(i), lr(ch.num("fader"), ch.num("pan"), ch.bool("mute"), ch.bool("solo"), duck: duck))
         }
         // The FX return is one stereo source: its L level feeds the left output, its R level the right one
-        let fxL = lr(fxr.num("l"), -50, fxr.bool("mute_l"), fxr.bool("solo_l") || !soloing).0
-        let fxR = lr(fxr.num("r"), 50, fxr.bool("mute_r"), fxr.bool("solo_r") || !soloing).1
+        let fxL = lr(fxr.num("l"), -50, fxr.bool("mute_l"), fxr.bool("solo_l") || !soloing, duck: duck).0
+        let fxR = lr(fxr.num("r"), 50, fxr.bool("mute_r"), fxr.bool("solo_r") || !soloing, duck: duck).1
         add(.fxReturn, (fxL, fxR))
         return out
     }

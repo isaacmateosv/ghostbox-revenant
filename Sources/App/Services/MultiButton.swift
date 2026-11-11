@@ -40,6 +40,9 @@ final class MultiButtonController {
         case "Toggle Dim": engine.perform { engine.handle(action: ["action": "toggle_global", "feature": "dim"]) }
         case "Toggle Mono": engine.perform { engine.handle(action: ["action": "toggle_global", "feature": "mono"]) }
         case "Forward to DAW (MIDI)": forward.send(bytes)
+        case "Next Preset": engine.perform { engine.handle(action: ["action": "next_preset"]) }
+        case "Swap A/B Mix": engine.perform { engine.handle(action: ["action": "ab_swap"]) }
+        case "Talkback (toggle)": engine.perform { engine.handle(action: ["action": "toggle_talkback"]) }
         case "Play/Pause": KeySender.mediaPlayPause()
         case "Space Bar": KeySender.key(49)
         case "Record (R key)": KeySender.key(15)

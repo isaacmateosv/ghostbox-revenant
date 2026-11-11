@@ -39,6 +39,8 @@
             <button id="btnTuner" data-action="tuner" title="Tuner (⌘T); also Dim + Mono on the Mbox">Tuner</button>
             <button data-action="setup" title="Clock, latency and panel options (⌘,)">Setup</button>
             <button data-action="flow" title="Signal flow diagram">Flow</button>
+            <button id="btnAB" data-action="abSwap" title="A/B: swap this mix with its other version. The first press keeps a copy of the mix as B, so tweak B and press again to hear A">A/B <b id="abSlot" class="num">A</b></button>
+            <button id="btnTalk" class="toggle" data-action="talkback" title="Talkback: opens the talkback input (Session tab) at unity in this mix and ducks the DAW and FX returns. Use headphones">Talk</button>
             <span class="sep"></span>
             <div class="presets">
                 <select id="presetSelect" aria-label="Presets" title="Saved mixer settings"></select>
@@ -112,6 +114,7 @@
             <nav role="tablist" aria-label="Tools">
                 <button data-action="toolsTab" data-arg="hardware">Hardware Check</button>
                 <button data-action="toolsTab" data-arg="multi">Multi Button</button>
+                <button data-action="toolsTab" data-arg="session">Session</button>
                 <button data-action="toolsTab" data-arg="midi">MIDI</button>
                 <button data-action="toolsTab" data-arg="system">System</button>
             </nav>
@@ -161,7 +164,7 @@
                 <div class="card">
                     <h3>2. Choose what it does</h3>
                     <select id="multiAction" data-change="multiAction" style="width:100%"></select>
-                    <p class="note" style="margin-top:8px">Play/Pause, Space Bar and Record send key presses (macOS asks once for Accessibility permission). <strong>Forward to DAW</strong> resends the message on a virtual MIDI port called <em>Mbox 3 Multi Button</em>: map it with your DAW's MIDI learn.</p>
+                    <p class="note" style="margin-top:8px">Play/Pause, Space Bar and Record send key presses (macOS asks once for Accessibility permission). <strong>Next Preset</strong> loads your presets in turn (a preset with another reverb or delay costs a second of silence: the Mbox is replugged to apply it). <strong>Swap A/B Mix</strong> and <strong>Talkback</strong> work like the top-bar buttons. <strong>Forward to DAW</strong> resends the message on a virtual MIDI port called <em>Mbox 3 Multi Button</em>: map it with your DAW's MIDI learn.</p>
                 </div>
                 <div class="card">
                     <h3>Soft button hold time</h3>
@@ -170,6 +173,31 @@
                         <option value="750">750 ms</option><option value="1000">1 s</option>
                     </select>
                     <p class="note" style="margin-top:8px">How long to hold the soft buttons (Multi, +48V, Mono, Dim). Last Multi action: <span id="multiLast" class="num">none</span></p>
+                </div>
+            </div>
+
+            <div data-pane="session" class="cards" hidden>
+                <div class="card" style="grid-column: span 2">
+                    <h3>Peaks and clips <span id="sessSince" class="badge">since launch</span></h3>
+                    <table id="sessTable" class="sess"></table>
+                    <div class="row">
+                        <button data-action="clearSession">Clear</button>
+                        <label class="check"><input type="checkbox" id="clipAlerts" data-change="clipAlerts"> Alert me when an input clips</label>
+                    </div>
+                    <p class="note">The highest peak and every clip on each channel since you last cleared, read from the Mbox's own meters (before the faders), so a clip during a take is never missed while you look away.</p>
+                </div>
+                <div class="card" style="grid-column: span 2">
+                    <h3>Out 1/2, last 10 minutes <span id="sessOutPeak" class="badge"></span></h3>
+                    <canvas id="sessHistory" class="history" width="640" height="130" aria-label="Out 1/2 peak level history"></canvas>
+                    <p class="note">The highest peak of each second on Out 1 (<span class="swatch l"></span>) and Out 2 (<span class="swatch r"></span>), newest on the right. Lines at 0 (red), −6, −12, −24 and −48 dBFS.</p>
+                </div>
+                <div class="card">
+                    <h3>Talkback</h3>
+                    <select id="talkInput" data-change="talkInput" style="width:100%">
+                        <option value="0">Input 1</option><option value="1">Input 2</option>
+                        <option value="2">S/PDIF In L</option><option value="3">S/PDIF In R</option>
+                    </select>
+                    <p class="note" style="margin-top:8px"><strong>Talk</strong> in the top bar (or the Multi button) puts this input in the middle of the mix you are on, at unity, and ducks the DAW and FX returns by about 20 dB. Press it again to close. Use headphones: a mic into speakers feeds back.</p>
                 </div>
             </div>
 

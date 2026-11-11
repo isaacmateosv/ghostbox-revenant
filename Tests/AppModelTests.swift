@@ -251,6 +251,68 @@ enum AppModelTests {
                    "invalid saved values fall back to the defaults")
         }
 
+        test("session log: peaks, clips, Out 1/2 history") {
+            var log = SessionLog()
+            let t0 = Date(timeIntervalSince1970: 1_000_000)
+            var raw = [UInt16](repeating: 0, count: 15)
+            raw[0] = 16384; raw[8] = 1000; raw[9] = 2000
+            expect(log.record(raw, now: t0).isEmpty, "no clip, no alert")
+            raw[0] = 32767
+            expect(log.record(raw, now: t0.addingTimeInterval(0.1)) == ["Input 1"], "a clip on Input 1 alerts")
+            expect(log.record(raw, now: t0.addingTimeInterval(0.2)).isEmpty, "a held clip counts once")
+            raw[0] = 100
+            _ = log.record(raw, now: t0.addingTimeInterval(0.3))
+            raw[0] = 32767
+            expect(log.record(raw, now: t0.addingTimeInterval(1.5)) == ["Input 1"], "a new clip counts again")
+            expect(log.clips[0] == 2 && log.peaks[0] == 32767, "two clips, peak kept")
+            raw[0] = 0; raw[8] = 32767
+            expect(log.record(raw, now: t0.addingTimeInterval(1.6)).isEmpty && log.clips[8] == 1, "output clips are counted, not alerted")
+            expect(log.history.count == 2 && log.history[0].l == 1000 && log.history[1].l == 32767, "one history point per second, its peak")
+            let j = log.json(now: t0.addingTimeInterval(2))
+            let first = (j["history"] as? [[Any]])?.first
+            expect(first?[0] as? Int == 2 && near(first?[1] as? Double ?? 0, -30.3), "history in seconds ago and dBFS")
+            let chans = j["channels"] as? [[String: Any]] ?? []
+            expect(chans.count == 12 && chans[0]["clips"] as? Int == 2 && chans[0]["peak_db"] as? Double == 0, "channels in the JSON")
+            expect(chans[3]["peak_db"] is NSNull, "silence has no peak")
+            _ = log.record(raw, now: t0.addingTimeInterval(700))
+            expect(log.history.count == 1, "history keeps 10 minutes")
+            log.clear(now: t0)
+            expect(log.clips.allSatisfy { $0 == 0 } && log.history.isEmpty, "clear")
+        }
+
+        test("talkback in the mix law") {
+            let s = defaultState()
+            let mix = s.dict("mixes").dict("analog")
+            func at(_ cps: [Crosspoint], _ src: MixSource, _ out: Int) -> Double { cps.first { $0.source == src && $0.output == out }?.level ?? -1 }
+            mix.array("hw").dicts[0]["mute"] = true
+            let normal = MixLaw.crosspoints(for: mix, bus: .analog)
+            let talk = MixLaw.crosspoints(for: mix, bus: .analog, talkback: 0)
+            expect(at(normal, .hardware(0), 0) == 0 && at(talk, .hardware(0), 0) == 100 && at(talk, .hardware(0), 1) == 100,
+                   "the talkback input opens at unity in the middle, past its mute")
+            expect(near(at(talk, .software(0), 0), at(normal, .software(0), 0) * MixLaw.talkbackDuck, 0.01), "DAW returns ducked")
+            expect(at(talk, .hardware(1), 1) == at(normal, .hardware(1), 1), "other inputs untouched")
+            mix.dict("master")["fader"] = 0
+            expect(at(MixLaw.crosspoints(for: mix, bus: .analog, talkback: 0), .hardware(0), 0) == 0, "the master still applies")
+        }
+
+        test("A/B and talkback state") {
+            let s = defaultState()
+            expect(s.dict("ab").dict("analog").str("slot") == "A" && s.str("talkback") == "", "defaults: A live, talkback closed")
+            expect(PanelState.runtimeKeys.contains("talkback"), "talkback is never saved")
+            let saved = PanelState.persistable(s)
+            let b = StateTree.deepCopy(PanelState.defaultMix(spdif: false))
+            b.dict("master")["fader"] = 42
+            saved.dict("ab").dict("analog")["other"] = b
+            saved.dict("ab").dict("analog")["slot"] = "B"
+            saved["talkback"] = "analog"
+            let restored = defaultState()
+            PanelState.restore(StateTree.deepCopy(saved), into: restored)
+            let other = restored.dict("ab").dict("analog").dict("other")
+            expect(other.dict("master").num("fader") == 42 && other.array("hw").count == 4, "the B mix is restored whole")
+            expect(restored.dict("ab").dict("analog").str("slot") == "B" && restored.str("talkback") == "", "slot kept, talkback closed")
+            expect(restored.dict("ab").dict("spdif").dict("other").count == 0, "no B yet on the other mix")
+        }
+
         print("app model tests: \(checks) checks, \(failures) failed")
         exit(failures == 0 ? 0 : 1)
     }

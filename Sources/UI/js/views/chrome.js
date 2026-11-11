@@ -5,12 +5,15 @@ import { api } from '../api.js';
 import { store, anySolo } from '../store.js';
 
 const LATENCY_NAMES = { safe: 'Safe', balanced: 'Balanced', low: 'Low' };
+const TALK_TITLE = 'Talkback: opens the talkback input (Session tab) at unity in this mix and ducks the DAW and FX returns. Use headphones';
+const TALK_OTHER = 'Talkback is open on the other mix: press to close it';
 
 export function createChrome(ctx) {
     let driverBannerDismissed = false;
     let updateBannerDismissed = '';  // the version put off with Later, until the next launch
     let lastPanel = {};
     let statusKey = '';
+    let lastPresetShown = '';  // the preset the engine loaded last (Next Preset on the Multi button), once selected
 
     // MARK: presets
 
@@ -64,6 +67,16 @@ export function createChrome(ctx) {
         for (const b of $$('.layout-switch button')) setOn(b, b.dataset.arg === S.layout);
         setOn($('#btnFit'), S.ui?.fit);
         setOn($('#btnTuner'), S.tuner);
+        const slot = S.ab?.[S.active_mix]?.slot || 'A';
+        setText($('#abSlot'), slot);
+        setOn($('#btnAB'), slot === 'B');
+        setOn($('#btnTalk'), !!S.talkback);
+        $('#btnTalk').title = S.talkback && S.talkback !== S.active_mix ? TALK_OTHER : TALK_TITLE;
+        const sel = $('#presetSelect');
+        if (S.last_preset && S.last_preset !== lastPresetShown && [...sel.options].some(o => o.value === S.last_preset)) {
+            lastPresetShown = S.last_preset;
+            sel.value = S.last_preset;
+        }
         $('#bannerSolo').hidden = !anySolo();
         renderDriverBanner();
         renderUpdateBanner();

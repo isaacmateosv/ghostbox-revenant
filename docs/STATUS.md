@@ -1,7 +1,14 @@
 # Status
 
 Where version 1.0.0 stands: what is verified and how, what still needs testing, known limitations and what is
-missing. Updated 2026-11-01 (hackintosh run: [TEST-HACKINTOSH-2026-11-01.md](TEST-HACKINTOSH-2026-11-01.md)).
+missing. Updated 2026-11-10 (rc.3 checks on Apple Silicon and on the Intel hackintosh: [TESTING-rc3.md](TESTING-rc3.md)).
+
+**rc.3 is out** ([v1.0.0-rc.3](https://github.com/isaacmateosv/ghostbox-revenant/releases/tag/v1.0.0-rc.3), Nov 10):
+installing while music plays and the panel connecting during playback no longer silence the Mbox, checked on an
+M4 (macOS 27) and on the Intel hackintosh (macOS 13.7.8). The hackintosh run found two more problems, fixed for
+rc.4: a clock-source change during playback silenced the Mbox, and the driver could crash when the Mbox left the
+bus mid-stream. rc.4 also adds the Session page (peaks, clips, Out 1/2 history, clip alerts), A/B mixes, talkback
+and new Multi button actions.
 
 **Summary:** release candidate. Everything has been built, unit tested and used on one Mac with a real Mbox 3.
 That Mac now runs the published rc.1 package (installed Oct 31: driver loaded, watchdog healthy), but the listening
@@ -46,8 +53,12 @@ macOS 15 and 26 (Apple Silicon and Intel), and it passed on macOS 14 (Apple Sili
 - [x] **Installing while audio plays** (Nov 10, Apple Silicon, macOS 27): Music pauses itself when Core Audio
       restarts (macOS does that for every app); pressing play reached the Mbox at once, with no replug. A software
       replug while music played restarted the stream cleanly too.
-- [ ] **The same on Intel / macOS 13 Ventura**, and the panel connecting while music plays with the clock fix
-      ([TESTING-rc3.md](TESTING-rc3.md)).
+- [x] **The same on Intel / macOS 13 Ventura** (Nov 10, hackintosh, 13.7.8): install while music plays, the panel
+      connecting during playback, a software replug during playback, the update check and playback timing (halio,
+      0.000 % never rendered at 128 and 384 frames) all pass. On macOS 13 Music does not pause when Core Audio
+      restarts. Results in [TESTING-rc3.md](TESTING-rc3.md).
+- [ ] **rc.4 on the hackintosh**: a clock-source change during playback (sound back after about a second), Reset
+      USB Connection during playback (no driver crash), the Session page, A/B, Talk and the new Multi button actions.
 - [ ] **Another Apple Silicon Mac** (the owner's M2) and **an Intel hackintosh** (Sonoma, Sequoia, Tahoe).
 - [x] **macOS 13 Ventura** (Intel hackintosh, 13.7.8): driver loads and streams; the choppy playback found there is fixed
       and verified through coreaudiod at every rate and buffer size (Nov 1).

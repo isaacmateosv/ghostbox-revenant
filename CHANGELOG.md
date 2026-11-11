@@ -25,6 +25,27 @@ control panel.
   and 26, Apple Silicon and Intel.
 - Documentation: architecture, protocol, logbook, status, install and release guides.
 
+### Added since 1.0.0-rc.3
+- **Session** page in the tools panel: the highest peak, clip count and time of the last clip of every channel
+  (inputs, DAW returns, outputs) since you last cleared it, read from the Mbox's own meters, and a graph of the peak
+  level on Out 1/2 for the last 10 minutes.
+- **Clip alerts**: a warning when Input 1, Input 2 or the S/PDIF input clips (on by default; a checkbox on the
+  Session page turns it off).
+- **A/B** in the top bar: two versions of a mix to compare. The first press keeps a copy of the mix as B; change B,
+  then press A/B to switch between them.
+- **Talk** in the top bar: talkback. It puts one input (Input 1 by default, chosen on the Session page) in the middle
+  of the mix you are on at unity, past its mute and any solo, and lowers the DAW and FX returns by about 20 dB until
+  you press it again. Never saved, so the app never starts with it on.
+- New **Multi button** actions: Next Preset (loads your presets in turn), Swap A/B Mix and Talkback.
+
+### Fixed since 1.0.0-rc.3
+- Changing the clock source (Setup) while audio plays no longer leaves the Mbox silent: the app now replugs the
+  Mbox in software after the change, which costs about a second of silence (found on macOS 13).
+- The driver no longer crashes when the Mbox leaves the bus during playback (a replug, Reset USB Connection or
+  unplugging): it stops handling audio transfers as soon as the USB stack reports the Mbox gone, instead of packing
+  audio into buffers that were already released. The flood of "submit in failed" log lines on each replug is gone
+  with it.
+
 ### Added since 1.0.0-rc.2
 - Update check: once a day the app looks for a newer release on GitHub and offers it in a banner. **Download &
   Install…** fetches the package, checks it against the release's `SHA256SUMS.txt` and opens it in Installer

@@ -17,6 +17,8 @@ final class Engine {
     private let hardware: MboxControl
     let driver: AudioDriverControl
     private var meters = MeterProcessor()
+    private var session = SessionLog()                                   // peaks, clips, Out 1/2 history
+    private var clipEvent: [String: Any] = ["id": 0, "channels": [String]()]  // the panel alerts on a new id
     private var timer: DispatchSourceTimer?
     private var tick = 0
     private var synced = false        // saved state pushed to the attached Mbox
@@ -80,7 +82,12 @@ final class Engine {
 
     // MARK: - Hardware sync
 
-    func syncBus(_ bus: Bus) { hardware.write(MixLaw.crosspoints(for: mix(bus), bus: bus)) }
+    func syncBus(_ bus: Bus) { hardware.write(MixLaw.crosspoints(for: mix(bus), bus: bus, talkback: talkbackInput(on: bus))) }
+
+    /// The input talkback opens on `bus`, nil when it is closed there.
+    func talkbackInput(on bus: Bus) -> Int? {
+        state.str("talkback") == bus.rawValue ? Int(state.dict("advanced").num("talkback_input")) : nil
+    }
 
     func syncFx() {
         let sends = MixLaw.fxSends(state: state)
@@ -244,6 +251,12 @@ final class Engine {
         } else {
             failures = 0
         }
+        if let raw {
+            let started = session.record(raw, now: Date())
+            if !started.isEmpty, state.dict("advanced").bool("clip_alerts") {
+                clipEvent = ["id": (clipEvent["id"] as? Int ?? 0) + 1, "channels": started]
+            }
+        }
         let post = setup.str("meter_mode") == "post"
         let frame = meters.process(raw, gains: post ? MixLaw.meterGains(for: mix(activeBus)) : [:], now: Date())
         state["meters"] = frame.levels
@@ -274,6 +287,7 @@ final class Engine {
                                     "sample_rate": setup.num("sample_rate"), "coreaudio": state.bool("coreaudio"),
                                     "spdif_locked": spdifLocked]
         if let midi { panel["midi_events"] = midi.eventCount }
+        panel["clip_event"] = clipEvent
         if let t = tunerReading, state.bool("tuner"), Date().timeIntervalSince(t.time) < 0.6 {
             panel["tuner_note"] = t.reading.note
             panel["tuner_cents"] = t.reading.cents
@@ -281,6 +295,11 @@ final class Engine {
         return StateTree.json(["ok": true, "connected": state.bool("connected"), "streaming": state.bool("streaming"),
                                "meters": state["meters"] ?? [:], "clips": state["clips"] ?? [:], "panel": panel, "rev": revision])
     }
+
+    /// The session log (GET /api/session).
+    func sessionJSON() -> Data { StateTree.json(["ok": true, "session": session.json(now: Date())]) }
+
+    func clearSession() { session.clear(now: Date()) }
 
     // MARK: - Presets
 
@@ -294,6 +313,7 @@ final class Engine {
     func loadPreset(_ name: String) -> Bool {
         guard let loaded = store.loadPreset(name) else { return false }
         for key in ["mixes", "fx_sends", "dsp"] { if let v = loaded[key] { state[key] = v } }
+        state["last_preset"] = name
         let withClock = setup.bool("load_latency_clock")
         let oldLatency = setup.str("latency_mode")
         if withClock, let s = loaded["setup"] as? NSDictionary {

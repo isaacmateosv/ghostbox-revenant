@@ -87,6 +87,25 @@ extension Engine {
             state.dict("multi_button")["learning"] = false
         case "reset_defaults":
             resetToDefaults()
+        case "ab_swap":
+            swapAB(bus)
+        case "set_talkback":
+            let on = (body["on"] as? NSNumber)?.boolValue ?? false
+            setTalkback(on ? bus : nil)
+            return
+        case "toggle_talkback":
+            setTalkback(state.str("talkback").isEmpty ? bus : nil)
+            return
+        case "next_preset":
+            let names = presetNames()
+            guard !names.isEmpty else { return }
+            let next = names.firstIndex(of: state.str("last_preset")).map { (names.index(after: $0)) % names.count } ?? 0
+            _ = loadPreset(names[next])  // marks the change itself
+            return
+        case "clear_session":
+            clearSession()
+            changed(persist: false)
+            return
         default:
             return
         }
@@ -112,7 +131,32 @@ extension Engine {
         if let choice = s["update_prereleases"] as? String, PanelState.prereleaseChoices.contains(choice) {
             advanced["update_prereleases"] = choice
         }
+        if let on = s["clip_alerts"] as? NSNumber { advanced["clip_alerts"] = on.boolValue }
+        if let input = (s["talkback_input"] as? NSNumber)?.intValue, PanelState.talkbackInputs.contains(input) {
+            advanced["talkback_input"] = input
+            if let open = Bus(rawValue: state.str("talkback")) { syncBus(open) }  // closed: nothing reaches the Mbox
+        }
         onAdvancedChanged?()
+    }
+
+    /// A/B: two versions of one mix to compare. The first swap keeps a copy of the live mix as the other slot (no audible
+    /// change), so you tweak B and swap back to hear A; each swap after that exchanges them.
+    func swapAB(_ bus: Bus) {
+        let ab = state.dict("ab").dict(bus.rawValue)
+        let live = StateTree.deepCopy(mix(bus))
+        if let other = ab["other"] as? NSDictionary, other["hw"] != nil {
+            state.dict("mixes")[bus.rawValue] = StateTree.deepCopy(other)
+        }
+        ab["other"] = live
+        ab["slot"] = ab.str("slot") == "B" ? "A" : "B"
+        syncBus(bus)
+    }
+
+    /// Opens talkback on `bus` (closes it with nil). Runtime only: never saved.
+    func setTalkback(_ bus: Bus?) {
+        state["talkback"] = bus?.rawValue ?? ""
+        Bus.allCases.forEach(syncBus)
+        changed(persist: false)
     }
 
     /// Clears every solo in both mixes (a forgotten solo silences everything else).

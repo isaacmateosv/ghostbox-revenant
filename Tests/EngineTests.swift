@@ -299,6 +299,53 @@ enum EngineTests {
             rig.cleanUp()
         }
 
+        test("A/B swap, talkback, next preset, clip alerts") {
+            let rig = Rig()
+            rig.poll()
+            func fader() -> Double { rig.engine.mix(.analog).dict("master").num("fader") }
+            rig.act(["action": "ab_swap", "bus": "analog"])
+            expect(rig.state.dict("ab").dict("analog").str("slot") == "B" && fader() == 85, "first swap: B is a copy, nothing changes")
+            rig.act(["action": "update_master", "bus": "analog",
+                     "master": ["fader": 50, "balance": 0, "width": 100, "mute_l": false, "mute_r": false, "swap": false] as NSMutableDictionary])
+            rig.act(["action": "ab_swap", "bus": "analog"])
+            expect(rig.state.dict("ab").dict("analog").str("slot") == "A" && fader() == 85, "back to A")
+            rig.act(["action": "ab_swap", "bus": "analog"])
+            expect(fader() == 50 && rig.mbox.level(.software(0), 0).map { abs($0 - 50.0 / 85 * 100) < 0.01 } == true, "B again, written to the Mbox")
+
+            rig.act(["action": "set_talkback", "on": true, "bus": "analog"])
+            expect(rig.state.str("talkback") == "analog" && rig.mbox.level(.hardware(0), 0) == rig.mbox.level(.hardware(0), 1), "talkback opens Input 1")
+            expect((rig.mbox.level(.hardware(0), 0) ?? 0) > 0, "at a level")
+            rig.act(["action": "set_advanced", "settings": ["talkback_input": 1]])
+            expect(rig.mbox.level(.hardware(1), 0) ?? 0 > 0 && rig.mbox.level(.hardware(0), 0) == 0, "talkback input moves to Input 2")
+            rig.act(["action": "toggle_talkback"])
+            expect(rig.state.str("talkback") == "" && rig.mbox.level(.hardware(1), 0) == 0, "closed again")
+
+            rig.act(["action": "next_preset"])
+            expect(rig.state.str("last_preset") == "", "no presets: nothing happens")
+            _ = rig.engine.savePreset("A one"); _ = rig.engine.savePreset("B two")
+            rig.act(["action": "next_preset"])
+            expect(rig.state.str("last_preset") == "A one", "first preset")
+            rig.act(["action": "next_preset"]); rig.act(["action": "next_preset"])
+            expect(rig.state.str("last_preset") == "A one", "wraps around")
+
+            func clipEvent() -> [String: Any] {
+                let d = StateTree.parse(rig.engine.metersJSON()) ?? [:]
+                return (d.dict("panel")["clip_event"] as? [String: Any]) ?? [:]
+            }
+            let id0 = clipEvent()["id"] as? Int ?? -1
+            rig.mbox.meters?[1] = 32767
+            rig.poll(9)
+            expect(clipEvent()["id"] as? Int == id0 + 1 && clipEvent()["channels"] as? [String] == ["Input 2"], "a clip raises one alert")
+            let session = StateTree.parse(rig.engine.sessionJSON())?.dict("session")
+            expect((session?.array("channels").dicts[1].num("clips") ?? 0) == 1, "and lands in the session log")
+            rig.act(["action": "clear_session"])
+            expect((StateTree.parse(rig.engine.sessionJSON())?.dict("session").array("channels").dicts[1].num("clips") ?? 1) == 0, "cleared")
+            rig.act(["action": "set_advanced", "settings": ["clip_alerts": false]])
+            rig.mbox.meters?[1] = 0; rig.poll(9); rig.mbox.meters?[1] = 32767; rig.poll(9)
+            expect(clipEvent()["id"] as? Int == id0 + 1, "alerts can be turned off")
+            rig.cleanUp()
+        }
+
         test("advanced settings never write to the Mbox") {
             let rig = Rig()
             rig.poll()

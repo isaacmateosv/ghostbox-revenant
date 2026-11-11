@@ -21,8 +21,8 @@ first when it exists, and keep its Status section current before stopping.
   `DriverState.h` (shared atomics). Built with -fvisibility=hidden: exports only Mbox3_Create + test hooks.
   Runs in "Core Audio Driver (GhostBoxRevenant.driver)"; installed at `/Library/Audio/Plug-Ins/HAL/GhostBoxRevenant.driver`.
 - `Sources/App/` Swift app "GhostBox Revenant GUI", layered:
-  `Model/` (pure, unit tested: StateTree, PanelState incl. migration, MixLaw, Meters, Tuner, Releases: SemVer + the
-  update decision),
+  `Model/` (pure, unit tested: StateTree, PanelState incl. migration, MixLaw incl. talkback, Meters, SessionLog: peaks,
+  clips and Out 1/2 history for the Session page, Tuner, Releases: SemVer + the update decision),
   `Hardware/` (Interfaces.swift: MboxControl + AudioDriverControl protocols the engine depends on; MboxHardware:
   MboxKit wrapper that writes only changed gains; CoreAudioDriver: HAL client),
   `Core/` (Engine: state owner, poll, sync, revision counter; EngineActions: the /api/state actions),
@@ -54,6 +54,8 @@ first when it exists, and keep its Status section current before stopping.
 - User data: `~/Library/Application Support/GhostBox Revenant/` (`last_state.json`, `presets/`).
 
 ## API contract (Sources/App/Server/APIRouter.swift)
+GET /api/session → {session{since, channels[{name, peak_db|null, clips, last_clip|null}], history[[seconds ago, L dB|null,
+R dB|null]], history_seconds}}; meters' panel.clip_event {id, channels} (the panel alerts on a new id);
 GET /api/state → {state, rev, info{app_version, driver_version, driver_latency|null, spdif_locked, data_dir,
 multi_actions, update{state idle|checking|current|available|downloading|ready|error, current, latest, prerelease,
 page, notes, published, size, checked_at, file, message, error, id}}}; GET /api/meters (also carries `rev`; the
@@ -63,8 +65,9 @@ POST /api/check-updates, /api/download-update (async; info.update), /api/reveal-
 POST /api/state {action,...} (EngineActions: update_channel(+sibling_val), update_channel_pair, update_links,
 update_fx_sends, update_fx_ret, update_dsp, update_master, switch_bus, copy_mix, clear_solos, set_layout,
 update_ui{fit,tools_open,tools_tab}, toggle_global, set_global{feature,on}, set_tuner, update_setup,
-set_advanced{settings{update_check, update_prereleases auto|on|off}}, update_multi_cfg, midi_learn, midi_forget,
-reset_defaults); POST /api/presets/save|load|delete, /api/init,
+set_advanced{settings{update_check, update_prereleases auto|on|off, clip_alerts, talkback_input 0-3}}, update_multi_cfg,
+midi_learn, midi_forget, reset_defaults, ab_swap{bus}, set_talkback{on,bus}, toggle_talkback, next_preset,
+clear_session); POST /api/presets/save|load|delete, /api/init,
 /api/reenumerate, /api/open-ams, /api/reveal-data. Security: Host must be 127.0.0.1/localhost, Origin (if any)
 must equal http://<Host>, POST needs Content-Type application/json, state changes are POST only.
 Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=Sources/UI` (live panel edits),
@@ -116,7 +119,11 @@ Dev: `GHOSTBOX_PORT`, `GHOSTBOX_DATA_DIR` (isolated settings), `GHOSTBOX_UI_DIR=
 - **A clock-selector write (0x8001), even with the value it already has, silences a running stream until the Mbox
   is re-enumerated** (isolated Nov 10). With music playing, these writes did not silence it: LLM, tuner, mono, dim,
   LED dim, hold, a crosspoint, an FX send, and a full effect write that included the preset (same value). The app
-  writes the selector only when it differs from the hardware's (Engine.applyClock).
+  writes the selector only when it differs from the hardware's (Engine.applyClock), and replugs the Mbox after a
+  write made more than 5 s after its enumeration (`MboxHardware.setClockSource`, like presets).
+- When the Mbox leaves the bus mid-stream, transfers complete with kIOReturnNoDevice/NotFound/Aborted. The driver must
+  not touch their buffers or resubmit (`IsochStream` gDeviceGone): packing OUT audio then crashed the driver process
+  (Nov 10, macOS 13).
 - Interface 0 = DFU runtime interface ("Mbox DFU", DFU 1.1, detach timeout 2000 ms): the firmware-update path.
   **Never send it anything** (a bad firmware write bricks the unit). Interface 2 alt 2 = a 2-channel playback mode
   (78-byte packets) that Avid's driver never selects: leave it alone. Write only controls Avid's driver writes.

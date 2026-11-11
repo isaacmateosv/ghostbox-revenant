@@ -27,6 +27,17 @@
 .level-db { font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; }
 .level-db small { font-size: var(--fs-tiny); color: var(--text-3); margin-left: 6px; }
 
+table.sess { width: 100%; border-collapse: collapse; font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+table.sess th { text-align: left; font-weight: 500; color: var(--text-3); padding: 2px 6px; border-bottom: 1px solid var(--line); }
+table.sess td { padding: 2px 6px; color: var(--text-2); font-family: var(--mono); }
+table.sess td:first-child { font-family: inherit; color: var(--text); }
+table.sess tr.clipped td { color: var(--meter-high); }
+canvas.history { width: 100%; height: 130px; display: block; background: #0b0c0e; border-radius: 6px; }
+.swatch { display: inline-block; width: 10px; height: 3px; vertical-align: middle; border-radius: 2px; }
+.swatch.l { background: var(--meter-low); }
+.swatch.r { background: var(--info); }
+label.check { display: inline-flex; gap: 6px; align-items: center; font-size: var(--fs-small); color: var(--text-2); }
+
 .log { font-family: var(--mono); font-size: var(--fs-tiny); background: #0e0f12; border: 1px solid var(--line); border-radius: 6px;
     padding: 6px 8px; height: 132px; overflow-y: auto; color: var(--text-2); line-height: 1.55; user-select: text; -webkit-user-select: text; }
 .log b { color: var(--info); font-weight: 600; }

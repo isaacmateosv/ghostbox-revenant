@@ -46,6 +46,8 @@ final class APIRouter {
             return .jsonData(engine.perform { engine.stateJSON() })
         case ("GET", "/api/meters"):
             return .jsonData(engine.perform { engine.metersJSON() })
+        case ("GET", "/api/session"):
+            return .jsonData(engine.perform { engine.sessionJSON() })
         case ("GET", "/api/midi"):
             return .json(["ok": true, "events": midi.recent()])
         case ("GET", "/api/diagnostics"):
