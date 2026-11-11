@@ -60,7 +60,10 @@ macOS 15 and 26 (Apple Silicon and Intel), and it passed on macOS 14 (Apple Sili
 - [x] **Input monitoring** (Nov 10, hackintosh): up to rc.4 the input faders did nothing because the app wrote 0 to
       the Host Control register; with 2 (Avid's value) the owner heard Input 1 in the headphones and Out 1/2 on the
       meters followed it. Fixed for rc.5.
-- [ ] **Recording with Host Control off** (2): confirm a DAW still records Input 1 normally.
+- [x] **Recording with Host Control off** (2): GarageBand records the inputs normally (Nov 11, hackintosh, rc.5).
+- [x] **Driver on the Mbox leaving the bus mid-stream** (rc.4+): logged once, no crash, no log flood (Nov 11).
+- [ ] **rc.6 install on the hackintosh**: no extra software replugs after the installer's own (rc.5 showed three,
+      suspected to come from rewriting a clock the app could not read).
 - [ ] **rc.4 on the hackintosh**: a clock-source change during playback (sound back after about a second), Reset
       USB Connection during playback (no driver crash), the Session page, A/B, Talk and the new Multi button actions.
 - [ ] **Another Apple Silicon Mac** (the owner's M2) and **an Intel hackintosh** (Sonoma, Sequoia, Tahoe).
